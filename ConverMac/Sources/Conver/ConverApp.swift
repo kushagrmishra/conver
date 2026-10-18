@@ -1048,24 +1048,57 @@ struct FloatingDropWheelRootView: View {
             VStack(spacing: 10) {
                 RadialDropWheel(wheelSize: 380 * CGFloat(store.wheelScale), onWindowMoved: onWindowMoved)
 
-                // Clear Glass Toast Pill when a conversion completes
+                // Clear Glass Toast Pill with Instant Drag-Out & Copy to Clipboard
                 if let toast = store.toast {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color(red: 0.25, green: 0.88, blue: 0.55))
+                            .font(.system(size: 13, weight: .bold))
+
                         Text(toast)
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundStyle(.white)
                             .lineLimit(1)
+
                         if let latest = store.recents.first {
+                            // Instant Copy to Clipboard
+                            Button {
+                                store.copyToClipboard(latest)
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: store.copiedFileRecently ? "checkmark" : "doc.on.doc")
+                                        .font(.system(size: 9.5, weight: .bold))
+                                    Text(store.copiedFileRecently ? "Copied" : "Copy")
+                                }
+                            }
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 3.5)
+                            .background(Capsule().fill(Color.white.opacity(store.copiedFileRecently ? 0.40 : 0.22)))
+                            .buttonStyle(.plain)
+
+                            // Show in Finder
                             Button("Show") {
                                 store.reveal(latest)
                             }
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .padding(.horizontal, 9)
                             .padding(.vertical, 3.5)
-                            .background(Capsule().fill(Color.white.opacity(0.24)))
+                            .background(Capsule().fill(Color.white.opacity(0.22)))
                             .buttonStyle(.plain)
+
+                            // Drag Out Badge Handle (Draggable to Slack, Figma, Discord, Mail, Browser)
+                            HStack(spacing: 3.5) {
+                                Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+                                    .font(.system(size: 9, weight: .heavy))
+                                Text("Drag Out")
+                                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                            }
+                            .padding(.horizontal, 8.5)
+                            .padding(.vertical, 3.5)
+                            .background(Capsule().fill(Color.white.opacity(0.32)))
+                            .overlay(Capsule().strokeBorder(Color.white.opacity(0.60), lineWidth: 0.8))
+                            .help("Drag directly into Slack, Figma, Discord, Mail, or Browser")
                         }
                     }
                     .padding(.horizontal, 16)
@@ -1073,6 +1106,12 @@ struct FloatingDropWheelRootView: View {
                     .overlay(Capsule().strokeBorder(Color.white.opacity(0.50), lineWidth: 1))
                     .clearGlassCapsule()
                     .shadow(color: .black.opacity(0.20), radius: 8, y: 3)
+                    .onDrag {
+                        if let latest = store.recents.first {
+                            return NSItemProvider(object: latest as NSURL)
+                        }
+                        return NSItemProvider()
+                    }
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
                 }
             }
@@ -1379,12 +1418,12 @@ struct RadialDropWheel: View {
             },
             WedgeSpec(
                 id: 7,
-                label: "Scan QR",
-                subtitle: "Decode & open",
-                icon: "qrcode.viewfinder",
-                types: [.image]
+                label: "Extract Text",
+                subtitle: "OCR & QR Scanner",
+                icon: "text.viewfinder",
+                types: [.image, .pdf]
             ) { urls in
-                presentQRMenu(for: urls)
+                presentTextAndQRMenu(for: urls)
             }
         ]
     }
@@ -1955,6 +1994,14 @@ struct RadialDropWheel: View {
                 })
             }
             options.append(WheelMenuOption(
+                title: "Extract Text to Clipboard (OCR)",
+                subtitle: "Recognize and copy all visible text via Apple Vision",
+                icon: "text.viewfinder"
+            ) {
+                runOCR(urls)
+            })
+
+            options.append(WheelMenuOption(
                 title: "Convert to PDF (.pdf)",
                 subtitle: urls.count > 1 ? "Combine \(urls.count) images into 1 PDF" : "Save image as PDF page",
                 icon: "doc.richtext.fill"
@@ -2012,6 +2059,9 @@ struct RadialDropWheel: View {
             })
             options.append(WheelMenuOption(title: "Flatten PDF (Rasterize)", subtitle: "Lock pages as non-editable images", icon: "square.3.layers.3d.down.right") {
                 runTask { try Engine.flattenPDF(urls[0], dir: store.outputDir) }
+            })
+            options.append(WheelMenuOption(title: "Extract Text to Clipboard (OCR)", subtitle: "Extract all text from PDF document", icon: "text.viewfinder") {
+                runOCR(urls)
             })
             if urls.count >= 2 {
                 options.append(WheelMenuOption(title: "Merge \(urls.count) PDFs into One", subtitle: "Combine documents in order", icon: "square.stack.3d.up.fill") {
@@ -2251,31 +2301,147 @@ struct RadialDropWheel: View {
         )
     }
 
-    // 7. Scan QR Menu
-    private func presentQRMenu(for rawURLs: [URL]) {
+    // 7. Extract Text (Neural OCR) & Scan QR Menu
+    private func presentTextAndQRMenu(for rawURLs: [URL]) {
         let urls = rawURLs.map { Engine.resolveFileURL($0) }
         let first = urls.first
+
+        var options: [WheelMenuOption] = []
+
+        if let u = first {
+            options.append(WheelMenuOption(
+                title: "Copy All Text (Neural OCR)",
+                subtitle: "Extract all visible text from image to clipboard",
+                icon: "text.badge.checkmark"
+            ) {
+                runOCR([u])
+            })
+
+            options.append(WheelMenuOption(
+                title: "Copy Text as Single Line",
+                subtitle: "Join lines with space (clean URL, key, or code)",
+                icon: "text.quote"
+            ) {
+                store.wheelBusy = true
+                Task {
+                    do {
+                        let text = try await Task.detached {
+                            try Engine.extractText(from: u)
+                        }.value
+                        await MainActor.run {
+                            store.wheelBusy = false
+                            let single = text.components(separatedBy: .newlines)
+                                .map { $0.trimmingCharacters(in: .whitespaces) }
+                                .filter { !$0.isEmpty }
+                                .joined(separator: " ")
+                            if single.isEmpty {
+                                store.say("No text detected in image")
+                            } else {
+                                let pb = NSPasteboard.general
+                                pb.clearContents()
+                                pb.setString(single, forType: .string)
+                                store.say("Copied text to clipboard!")
+                            }
+                            store.onCheckAutoClose?()
+                        }
+                    } catch {
+                        await MainActor.run {
+                            store.wheelBusy = false
+                            store.say("OCR Error: \(error.localizedDescription)")
+                            store.onCheckAutoClose?()
+                        }
+                    }
+                }
+            })
+
+            options.append(WheelMenuOption(
+                title: "Save Recognized Text as .txt",
+                subtitle: "Write recognized text to a file in output folder",
+                icon: "doc.text.fill"
+            ) {
+                store.wheelBusy = true
+                Task {
+                    do {
+                        let text = try await Task.detached {
+                            try Engine.extractText(from: u)
+                        }.value
+                        await MainActor.run {
+                            store.wheelBusy = false
+                            if text.isEmpty {
+                                store.say("No text detected in image")
+                            } else {
+                                let outURL = Engine.outURL(u, ext: "txt", suffix: "-ocr", dir: store.outputDir)
+                                try? text.write(to: outURL, atomically: true, encoding: .utf8)
+                                store.done(outURL)
+                            }
+                            store.onCheckAutoClose?()
+                        }
+                    } catch {
+                        await MainActor.run {
+                            store.wheelBusy = false
+                            store.say("OCR Error: \(error.localizedDescription)")
+                            store.onCheckAutoClose?()
+                        }
+                    }
+                }
+            })
+        }
+
         let codes: [String] = {
             guard let u = first, let cg = try? Engine.loadCGImage(u) else { return [] }
             return (try? Engine.scanQR(cg)) ?? []
         }()
 
-        var options: [WheelMenuOption] = []
         for code in codes {
-            options.append(WheelMenuOption(title: "Copy \"\(code)\"", subtitle: "Copy decoded QR text to clipboard", icon: "doc.on.doc.fill") {
+            options.append(WheelMenuOption(title: "Copy QR \"\(code)\"", subtitle: "Copy decoded QR text to clipboard", icon: "doc.on.doc.fill") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(code, forType: .string)
                 store.say("Copied QR: \(code)")
                 store.onCheckAutoClose?()
             })
             if let u = URL(string: code), let scheme = u.scheme?.lowercased(), ["http", "https"].contains(scheme) {
-                options.append(WheelMenuOption(title: "Open Link in Browser", subtitle: code, icon: "safari.fill") {
+                options.append(WheelMenuOption(title: "Open QR Link in Browser", subtitle: code, icon: "safari.fill") {
                     NSWorkspace.shared.open(u)
                     store.onCheckAutoClose?()
                 })
             }
         }
-        options.append(WheelMenuOption(title: "Scan Image from Clipboard", subtitle: "Decode QR code from copied screenshot", icon: "doc.on.clipboard") {
+
+        options.append(WheelMenuOption(title: "Extract Text from Clipboard Image", subtitle: "OCR screenshot or image copied to clipboard", icon: "doc.on.clipboard") {
+            if let img = NSImage(pasteboard: .general),
+               let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                store.wheelBusy = true
+                Task {
+                    do {
+                        let text = try Engine.extractText(cg)
+                        await MainActor.run {
+                            store.wheelBusy = false
+                            if text.isEmpty {
+                                store.say("No text found in clipboard image")
+                            } else {
+                                let pb = NSPasteboard.general
+                                pb.clearContents()
+                                pb.setString(text, forType: .string)
+                                let count = text.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+                                store.say("Copied \(count) line\(count == 1 ? "" : "s") from clipboard!")
+                            }
+                            store.onCheckAutoClose?()
+                        }
+                    } catch {
+                        await MainActor.run {
+                            store.wheelBusy = false
+                            store.say("OCR Error: \(error.localizedDescription)")
+                            store.onCheckAutoClose?()
+                        }
+                    }
+                }
+            } else {
+                store.say("No image found on clipboard")
+                store.onCheckAutoClose?()
+            }
+        })
+
+        options.append(WheelMenuOption(title: "Scan QR Code from Clipboard", subtitle: "Decode QR code from copied screenshot", icon: "qrcode") {
             if let img = NSImage(pasteboard: .general),
                let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil),
                let found = (try? Engine.scanQR(cg))?.first {
@@ -2287,18 +2453,51 @@ struct RadialDropWheel: View {
             }
             store.onCheckAutoClose?()
         })
+
         options.append(WheelMenuOption(title: "Open Full QR Scanner…", subtitle: "Inspect multiple QR payloads", icon: "qrcode.viewfinder") {
             store.tab = .qr
             store.onOpenStudio?(.qr)
         })
 
-        let badge = codes.isEmpty ? "No QR Detected in Image" : "\(codes.count) QR Code(s) Decoded"
+        let badge = !codes.isEmpty ? "\(codes.count) QR Code(s) + Neural OCR" : "Apple Vision Neural OCR"
         store.activeMenu = WheelActionMenu(
-            wedgeTitle: "Scan QR",
+            wedgeTitle: "Extract Text",
             detectedBadge: badge,
-            detectedIcon: "qrcode.viewfinder",
+            detectedIcon: "text.viewfinder",
             options: options
         )
+    }
+
+    private func runOCR(_ urls: [URL]) {
+        guard let first = urls.first else { return }
+        store.wheelBusy = true
+        Task {
+            do {
+                let text = try await Task.detached {
+                    try Engine.extractText(from: first)
+                }.value
+
+                await MainActor.run {
+                    store.wheelBusy = false
+                    if text.isEmpty {
+                        store.say("No text detected in image")
+                    } else {
+                        let pb = NSPasteboard.general
+                        pb.clearContents()
+                        pb.setString(text, forType: .string)
+                        let count = text.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }.count
+                        store.say("Copied \(count) line\(count == 1 ? "" : "s") to clipboard!")
+                    }
+                    store.onCheckAutoClose?()
+                }
+            } catch {
+                await MainActor.run {
+                    store.wheelBusy = false
+                    store.say("OCR Error: \(error.localizedDescription)")
+                    store.onCheckAutoClose?()
+                }
+            }
+        }
     }
 
     // MARK: - Execution Helpers
@@ -2320,8 +2519,8 @@ struct RadialDropWheel: View {
             store.wheelBusy = false
             if let lastOut {
                 let actualExt = lastOut.pathExtension.uppercased()
+                store.copyToClipboard(lastOut, announce: false)
                 store.say("Converted \(count) file\(count == 1 ? "" : "s") → \(actualExt)")
-                store.reveal(lastOut)
             }
             try? await Task.sleep(for: .seconds(0.9))
             store.onCheckAutoClose?()
@@ -2345,8 +2544,8 @@ struct RadialDropWheel: View {
             }
             store.wheelBusy = false
             if let lastOut {
+                store.copyToClipboard(lastOut, announce: false)
                 store.say("Stripped EXIF from \(count) file\(count == 1 ? "" : "s")")
-                store.reveal(lastOut)
             }
             try? await Task.sleep(for: .seconds(0.9))
             store.onCheckAutoClose?()

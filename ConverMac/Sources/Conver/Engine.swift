@@ -413,11 +413,35 @@ enum Engine {
         return out
     }
 
-    // MARK: QR
+    // MARK: QR & OCR
     static func scanQR(_ img: CGImage) throws -> [String] {
         let req = VNDetectBarcodesRequest()
         try VNImageRequestHandler(cgImage: img).perform([req])
         return (req.results ?? []).compactMap { $0.payloadStringValue }
+    }
+
+    /// Neural OCR text recognition using Apple Vision framework
+    static func extractText(_ cg: CGImage) throws -> String {
+        let req = VNRecognizeTextRequest()
+        req.recognitionLevel = .accurate
+        req.usesLanguageCorrection = true
+        let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+        try handler.perform([req])
+        let observations = req.results ?? []
+        let lines = observations.compactMap { $0.topCandidates(1).first?.string }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func extractText(from url: URL) throws -> String {
+        let resolved = resolveFileURL(url)
+        if resolved.pathExtension.lowercased() == "pdf", let doc = PDFDocument(url: resolved) {
+            let pdfText = (0..<doc.pageCount).compactMap { doc.page(at: $0)?.string }.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if !pdfText.isEmpty {
+                return pdfText
+            }
+        }
+        let cg = try loadCGImage(resolved)
+        return try extractText(cg)
     }
 
     // MARK: PDF

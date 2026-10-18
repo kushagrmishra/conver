@@ -112,17 +112,38 @@ struct WheelActionMenu: Identifiable {
     let audio = AudioModel()
     let pdf = PDFModel()
 
-    func say(_ s: String) {
+    @Published var copiedFileRecently = false
+    @Published var autoCopyToClipboard = true
+
+    func say(_ s: String, duration: Double = 3.8) {
         withAnimation(.spring(duration: 0.25)) {
             toast = s
         }
         Task {
-            try? await Task.sleep(for: .seconds(2.4))
+            try? await Task.sleep(for: .seconds(duration))
             if toast == s {
                 withAnimation(.easeOut(duration: 0.2)) {
                     toast = nil
                 }
             }
+        }
+    }
+
+    func copyToClipboard(_ u: URL, announce: Bool = true) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        var items: [NSPasteboardWriting] = [u as NSURL]
+        if let img = NSImage(contentsOf: u) {
+            items.append(img)
+        }
+        pb.writeObjects(items)
+        copiedFileRecently = true
+        if announce {
+            say("Copied \(u.lastPathComponent) to clipboard!")
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            copiedFileRecently = false
         }
     }
 
@@ -201,8 +222,11 @@ struct WheelActionMenu: Identifiable {
         if recents.count > 6 { recents.removeLast() }
     }
 
-    func done(_ u: URL, reveal r: Bool = true) {
+    func done(_ u: URL, reveal r: Bool = false) {
         addRecent(u)
+        if autoCopyToClipboard {
+            copyToClipboard(u, announce: false)
+        }
         say("Saved \(u.lastPathComponent)")
         if r { reveal(u) }
     }
