@@ -13,11 +13,13 @@ Choose your operating system below — you can either **Directly Download the Ap
 
 - **Direct App Download:**
   - [**📦 Download `Conver.dmg` for macOS (Direct Download)**](../../releases/latest/download/Conver.dmg)
-- **Download & Install via Terminal:**
+- **Download & Install via Terminal (Recommended · Skips Gatekeeper):**
   ```bash
   curl -fsSL https://raw.githubusercontent.com/kushagrmishra/conver/main/install.sh | bash
   ```
-  *(Or download only via terminal: `curl -fLO https://github.com/kushagrmishra/conver/releases/latest/download/Conver.dmg`)*
+  > 💡 **Note on macOS Security ("Apple cannot verify..."):** Conver is 100% safe, open-source, and offline. Because it is free community software without a commercial Apple cert:
+  > - **Easiest:** Use the terminal command above (auto-approves the app).
+  > - **Or if opening the DMG:** Right-click (Control-click) `Conver.app` → choose **Open** → click **Open** (or click **Open Anyway** in **System Settings → Privacy & Security**).
 
 ---
 
