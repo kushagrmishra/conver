@@ -1,15 +1,19 @@
 #!/bin/bash
-# Builds Conver.app and Conver.dmg from the Swift package and compiles conver.icon natively via actool.
+# Builds Conver.app and styled Retina Conver.dmg
 set -euo pipefail
 cd "$(dirname "$0")"
+
+echo "==> Compiling native Swift release binary..."
 swift build -c release
-APP=dist/Conver.app
-rm -rf dist && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+APP="dist/Conver.app"
+rm -rf dist
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Conver "$APP/Contents/MacOS/Conver"
 
-# --- Compile conver.icon natively using Apple's actool (NO PNG rasterization!) ---
+# --- Compile conver.icon bundle natively with actool ---
 if [ -d "conver.icon" ]; then
-  echo "Compiling conver.icon bundle natively with xcrun actool..."
+  echo "==> Compiling conver.icon bundle natively with actool..."
   xcrun actool conver.icon \
     --compile "$APP/Contents/Resources" \
     --platform macosx \
@@ -37,11 +41,81 @@ cat > "$APP/Contents/Info.plist" <<'PL'
 <key>NSAppleEventsUsageDescription</key><string>Conver automatically drops your selected Finder files into the Drop Wheel when you press Shift+Z.</string>
 </dict></plist>
 PL
+
+echo "==> Signing application bundle..."
 codesign --force --deep --options runtime --entitlements Conver.entitlements --sign - "$APP"
 
-# --- DMG ---
-STAGE=dist/dmg; mkdir -p "$STAGE"; cp -R "$APP" "$STAGE/"; ln -s /Applications "$STAGE/Applications"
-echo "👉 Drag Conver into the Applications folder on the right to install." > "$STAGE/Drag Conver to Applications.txt"
-hdiutil create -volname "Conver" -srcfolder "$STAGE" -ov -format UDZO dist/Conver.dmg >/dev/null
-rm -rf "$STAGE" dist/assetcatalog_generated_info.plist
-echo "Built: $(pwd)/dist/Conver.dmg"
+# --- Generate Retina DMG Background ---
+if [ -f "make_dmg_bg.js" ]; then
+  echo "==> Generating Retina DMG background graphic..."
+  /opt/homebrew/bin/node make_dmg_bg.js || true
+fi
+
+# --- Create Styled DMG with Custom Finder Layout ---
+echo "==> Building custom styled Conver.dmg..."
+DMG_VOL="Conver"
+DMG_TMP="dist/temp.dmg"
+DMG_FINAL="dist/Conver.dmg"
+rm -f "$DMG_TMP" "$DMG_FINAL"
+
+# Create a temporary read-write sparse/dmg (60MB)
+hdiutil create -size 60m -fs HFS+ -volname "$DMG_VOL" -ov "$DMG_TMP" >/dev/null
+
+# Unmount any existing Conver volume first
+diskutil unmount force "/Volumes/$DMG_VOL" 2>/dev/null || true
+
+# Mount DMG
+ATTACH_OUT=$(hdiutil attach -readwrite -noverify -noautoopen "$DMG_TMP")
+MOUNT_DIR=$(echo "$ATTACH_OUT" | grep -o '/Volumes/.*' | head -n 1)
+
+if [ -z "$MOUNT_DIR" ] || [ ! -d "$MOUNT_DIR" ]; then
+  echo "Error: Failed to find mount directory for DMG"
+  exit 1
+fi
+echo "Mounted at: $MOUNT_DIR"
+
+# Populate DMG contents
+cp -R "$APP" "$MOUNT_DIR/"
+ln -s /Applications "$MOUNT_DIR/Applications"
+
+if [ -f "dmg_background.png" ]; then
+  mkdir -p "$MOUNT_DIR/.background"
+  cp "dmg_background.png" "$MOUNT_DIR/.background/bg.png"
+fi
+
+# Configure Finder visual layout with AppleScript
+echo "==> Configuring Finder window layout & icon positions..."
+osascript <<EOF || true
+tell application "Finder"
+  tell disk "$DMG_VOL"
+    open
+    set current view of container window to icon view
+    set toolbar visible of container window to false
+    set statusbar visible of container window to false
+    set the bounds of container window to {400, 150, 1060, 570}
+    set theViewOptions to the icon view options of container window
+    set arrangement of theViewOptions to not arranged
+    set icon size of theViewOptions to 120
+    if exists file ".background:bg.png" then
+      set background picture of theViewOptions to file ".background:bg.png"
+    end if
+    set position of item "Conver.app" of container window to {170, 240}
+    set position of item "Applications" of container window to {490, 240}
+    close
+    open
+    update without registering applications
+    delay 1
+  end tell
+end tell
+EOF
+
+# Sync and unmount
+sync
+hdiutil detach "$MOUNT_DIR" -quiet || hdiutil detach "$MOUNT_DIR" -force -quiet || true
+sleep 1
+
+# Convert into final compressed read-only DMG
+hdiutil convert "$DMG_TMP" -format UDZO -imagekey zlib-level=9 -o "$DMG_FINAL" >/dev/null
+rm -f "$DMG_TMP" dist/assetcatalog_generated_info.plist
+
+echo "==> Finished! Styled DMG built at: $(pwd)/$DMG_FINAL"
