@@ -1,0 +1,14 @@
+{
+  "name": "conver-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Conver — Floating Clear Glass Drop Wheel (Shift+Z) for macOS, Linux, and Windows",
+  "license": "MIT",
+  "scripts": {
+    "setup": "cd conver && npm install",
+    "start": "cd conver && npm start",
+    "build:mac": "cd ConverMac && chmod +x package.sh && ./package.sh",
+    "build:linux": "cd conver && npm install && npm run dist:linux",
+    "build:win": "cd conver && npm install && npm run dist:win"
+  }
+}

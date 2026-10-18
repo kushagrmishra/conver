@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conver — Download for macOS, Windows &amp; Linux</title>
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card: rgba(255, 255, 255, 0.05);
+      --card-hover: rgba(255, 255, 255, 0.08);
+      --card-border: rgba(255, 255, 255, 0.14);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #ffffff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+      background-image: radial-gradient(circle at 50% 15%, rgba(91, 150, 239, 0.16) 0%, transparent 60%);
+    }
+    .container {
+      max-width: 980px;
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 32px;
+      padding: 48px 36px;
+      backdrop-filter: blur(28px);
+      box-shadow: 0 24px 68px rgba(0, 0, 0, 0.65);
+    }
+    .icon-wrap {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon-wrap svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 12px 24px rgba(0,0,0,0.4));
+    }
+    h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      margin-bottom: 10px;
+    }
+    p.lead {
+      font-size: 16px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 640px;
+      margin: 0 auto 32px;
+    }
+    .platforms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+      gap: 18px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+    .os-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1.5px solid var(--card-border);
+      border-radius: 22px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: all 0.2s ease;
+    }
+    .os-card.recommended {
+      border-color: rgba(255, 255, 255, 0.55);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+    .os-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .os-title {
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .os-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+    .btn-direct {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #ffffff;
+      color: #000000;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: all 0.18s ease;
+    }
+    .btn-direct:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.22);
+    }
+    .sub-links {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .sub-links a {
+      color: var(--muted);
+      text-decoration: underline;
+    }
+    .sub-links a:hover {
+      color: #fff;
+    }
+    .term-box {
+      background: rgba(0, 0, 0, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .term-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    .term-cmd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11.5px;
+      color: #e5e7eb;
+      word-break: break-all;
+      user-select: all;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      text-align: left;
+      border-top: 1px solid var(--card-border);
+      padding-top: 28px;
+    }
+    .feature-item h4 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .feature-item p {
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon-wrap">
+      <svg viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="100" y="100" width="824" height="824" rx="185" fill="#1C1D24" stroke="rgba(255,255,255,0.18)" stroke-width="4"/>
+        <g opacity="0.95">
+          <rect x="200" y="240" width="460" height="600" rx="42" transform="rotate(-15 200 240)" fill="#5B96EF" />
+          <rect x="360" y="180" width="460" height="600" rx="42" transform="rotate(15 360 180)" fill="#EF5B5B" />
+          <rect x="280" y="210" width="464" height="600" rx="42" fill="#E8E3E3" opacity="0.92" />
+        </g>
+      </svg>
+    </div>
+
+    <h1>Conver</h1>
+    <p class="lead">Summon the Clear Glass Drop Wheel anywhere with <strong>Shift + Z</strong>. Download the app directly or install via Terminal on macOS, Windows, and Linux.</p>
+
+    <div class="platforms-grid">
+      <!-- 1. macOS -->
+      <div class="os-card" id="card-mac">
+        <div class="os-head">
+          <span class="os-title">🍎 macOS</span>
+          <span class="os-badge" id="badge-mac">Universal .dmg</span>
+        </div>
+        <a id="dl-mac-dmg" href="#" class="btn-direct">⬇ Direct Download (.dmg)</a>
+        <div class="term-box">
+          <div class="term-head">
+            <span>Terminal Install</span>
+            <button class="copy-btn" data-copy="cmd-mac">Copy</button>
+          </div>
+          <code class="term-cmd" id="cmd-mac">curl -fsSL https://raw.githubusercontent.com/kushagrmishra/conver/main/install.sh | bash</code>
+        </div>
+      </div>
+
+      <!-- 2. Windows -->
+      <div class="os-card" id="card-win">
+        <div class="os-head">
+          <span class="os-title">🪟 Windows</span>
+          <span class="os-badge" id="badge-win">Win 10/11 64-bit</span>
+        </div>
+        <a id="dl-win-exe" href="#" class="btn-direct">⬇ Direct Download (.exe)</a>
+        <div class="sub-links">
+          <a id="dl-win-portable" href="#">Download Portable (.exe)</a>
+        </div>
+        <div class="term-box">
+          <div class="term-head">
+            <span>PowerShell Install</span>
+            <button class="copy-btn" data-copy="cmd-win">Copy</button>
+          </div>
+          <code class="term-cmd" id="cmd-win">irm https://raw.githubusercontent.com/kushagrmishra/conver/main/install.ps1 | iex</code>
+        </div>
+      </div>
+
+      <!-- 3. Linux -->
+      <div class="os-card" id="card-linux">
+        <div class="os-head">
+          <span class="os-title">🐧 Linux</span>
+          <span class="os-badge" id="badge-linux">AppImage &amp; .deb</span>
+        </div>
+        <a id="dl-linux-appimage" href="#" class="btn-direct">⬇ Direct Download (.AppImage)</a>
+        <div class="sub-links">
+          <a id="dl-linux-deb" href="#">Download Ubuntu/Debian (.deb)</a>
+        </div>
+        <div class="term-box">
+          <div class="term-head">
+            <span>Terminal Install</span>
+            <button class="copy-btn" data-copy="cmd-linux">Copy</button>
+          </div>
+          <code class="term-cmd" id="cmd-linux">curl -fsSL https://raw.githubusercontent.com/kushagrmishra/conver/main/install.sh | bash</code>
+        </div>
+      </div>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-item">
+        <h4>🔒 100% Offline &amp; Private</h4>
+        <p>Zero cloud uploads, zero telemetry, all conversions happen locally on your device.</p>
+      </div>
+      <div class="feature-item">
+        <h4>⚡ Global Shift + Z Wheel</h4>
+        <p>Select files in Finder/Explorer and press Shift+Z to auto-detect formats and convert.</p>
+      </div>
+      <div class="feature-item">
+        <h4>🎁 Open Source (MIT)</h4>
+        <p>Completely free for personal and commercial use with native builds for all 3 OSes.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auto-detect GitHub repository slug if hosted on github.io, otherwise fallback
+    let repo = "kushagrmishra/conver";
+    if (location.hostname.endsWith(".github.io")) {
+      const owner = location.hostname.replace(".github.io", "");
+      const seg = location.pathname.split("/").filter(Boolean)[0] || "conver";
+      repo = `${owner}/${seg}`;
+    }
+
+    const releaseBase = `https://github.com/${repo}/releases/latest/download`;
+    const rawBase = `https://raw.githubusercontent.com/${repo}/main`;
+
+    document.getElementById("dl-mac-dmg").href = `${releaseBase}/Conver.dmg`;
+    document.getElementById("dl-win-exe").href = `${releaseBase}/Conver-Setup.exe`;
+    document.getElementById("dl-win-portable").href = `${releaseBase}/Conver-Portable.exe`;
+    document.getElementById("dl-linux-appimage").href = `${releaseBase}/Conver.AppImage`;
+    document.getElementById("dl-linux-deb").href = `${releaseBase}/Conver.deb`;
+
+    document.getElementById("cmd-mac").textContent = `curl -fsSL ${rawBase}/install.sh | bash`;
+    document.getElementById("cmd-win").textContent = `irm ${rawBase}/install.ps1 | iex`;
+    document.getElementById("cmd-linux").textContent = `curl -fsSL ${rawBase}/install.sh | bash`;
+
+    // Highlight user's detected OS card
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("mac") || ua.includes("darwin")) {
+      document.getElementById("card-mac").classList.add("recommended");
+      document.getElementById("badge-mac").textContent = "Detected OS";
+    } else if (ua.includes("win")) {
+      document.getElementById("card-win").classList.add("recommended");
+      document.getElementById("badge-win").textContent = "Detected OS";
+    } else if (ua.includes("linux")) {
+      document.getElementById("card-linux").classList.add("recommended");
+      document.getElementById("badge-linux").textContent = "Detected OS";
+    }
+
+    // Copy terminal command button
+    document.querySelectorAll(".copy-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const text = document.getElementById(btn.dataset.copy).textContent;
+        navigator.clipboard.writeText(text);
+        const prev = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => (btn.textContent = prev), 1600);
+      });
+    });
+  </script>
+</body>
+</html>

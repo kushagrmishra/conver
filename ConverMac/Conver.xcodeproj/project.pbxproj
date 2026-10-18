@@ -1,0 +1,287 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		31B56398F2C1F10D8874DFFB /* PhotoStudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C3E3AA72E1F8242FABBEE64 /* PhotoStudio.swift */; };
+		4AD9035B2DAC9EF92CCE0CB6 /* ConverApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F18741204F34B948BCFB49 /* ConverApp.swift */; };
+		7E01258305C2D3EADC628F5A /* Store.swift in Sources */ = {isa = PBXBuildFile; fileRef = 185384365E91B872374A4F4A /* Store.swift */; };
+		95830C077541328980D30FF4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35E32BAB77D3A50EAC04C01C /* Theme.swift */; };
+		B57E110F30840514005E9840 /* conver.icon in Resources */ = {isa = PBXBuildFile; fileRef = B57E110E30840514005E9840 /* conver.icon */; };
+		C473EA42CC15294F827932C9 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = A424F63F92986C6F9A69043C /* AppIcon.icns */; };
+		D751F2991FAC4CF9E8597036 /* Engine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C00EB08B87DD2AE3043BAB2E /* Engine.swift */; };
+		DCAA81F2EB5D0D41BF6E8562 /* AudioStudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E42502FC6841D716A2F7E8B /* AudioStudio.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		185384365E91B872374A4F4A /* Store.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Store.swift; path = Sources/Conver/Store.swift; sourceTree = "<group>"; };
+		1EA942213F1D3992727EC522 /* Conver.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = Conver.entitlements; sourceTree = "<group>"; };
+		35E32BAB77D3A50EAC04C01C /* Theme.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Theme.swift; path = Sources/Conver/Theme.swift; sourceTree = "<group>"; };
+		60D2DC34BB813784EE43AA4B /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		6C3E3AA72E1F8242FABBEE64 /* PhotoStudio.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = PhotoStudio.swift; path = Sources/Conver/PhotoStudio.swift; sourceTree = "<group>"; };
+		7E42502FC6841D716A2F7E8B /* AudioStudio.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = AudioStudio.swift; path = Sources/Conver/AudioStudio.swift; sourceTree = "<group>"; };
+		A424F63F92986C6F9A69043C /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		B57E110E30840514005E9840 /* conver.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = conver.icon; sourceTree = "<group>"; };
+		C00EB08B87DD2AE3043BAB2E /* Engine.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = Engine.swift; path = Sources/Conver/Engine.swift; sourceTree = "<group>"; };
+		E5F18741204F34B948BCFB49 /* ConverApp.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = ConverApp.swift; path = Sources/Conver/ConverApp.swift; sourceTree = "<group>"; };
+		FD4AE9945C84953704891824 /* Conver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Conver.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C83AAF28729CBB0676C6E44A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0A85897F1A32FE9B91C081CD = {
+			isa = PBXGroup;
+			children = (
+				E9AC4BD1540DF25F92F842D2 /* Sources */,
+				F5264EC371987BBAC756C3C3 /* Resources */,
+				B57E110E30840514005E9840 /* conver.icon */,
+				B88D7E26791946AEFDCC8BB7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B88D7E26791946AEFDCC8BB7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				FD4AE9945C84953704891824 /* Conver.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E9AC4BD1540DF25F92F842D2 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				E5F18741204F34B948BCFB49 /* ConverApp.swift */,
+				C00EB08B87DD2AE3043BAB2E /* Engine.swift */,
+				35E32BAB77D3A50EAC04C01C /* Theme.swift */,
+				185384365E91B872374A4F4A /* Store.swift */,
+				7E42502FC6841D716A2F7E8B /* AudioStudio.swift */,
+				6C3E3AA72E1F8242FABBEE64 /* PhotoStudio.swift */,
+			);
+			name = Sources;
+			sourceTree = "<group>";
+		};
+		F5264EC371987BBAC756C3C3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A424F63F92986C6F9A69043C /* AppIcon.icns */,
+				1EA942213F1D3992727EC522 /* Conver.entitlements */,
+				60D2DC34BB813784EE43AA4B /* Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		581D5326D294E7E9C6DCCE45 /* Conver */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1C377C0592C559B92F8CA329 /* Build configuration list for PBXNativeTarget "Conver" */;
+			buildPhases = (
+				3AEFC7AF23A1B48D63A8E092 /* Sources */,
+				C83AAF28729CBB0676C6E44A /* Frameworks */,
+				4790E24B1EB47123FE6EDC1D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Conver;
+			productName = Conver;
+			productReference = FD4AE9945C84953704891824 /* Conver.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1781F676DEDF5767F3243DB0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					581D5326D294E7E9C6DCCE45 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 2304916CBAF46E633AC86A9C /* Build configuration list for PBXProject "Conver" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 0A85897F1A32FE9B91C081CD;
+			productRefGroup = B88D7E26791946AEFDCC8BB7 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				581D5326D294E7E9C6DCCE45 /* Conver */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4790E24B1EB47123FE6EDC1D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B57E110F30840514005E9840 /* conver.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3AEFC7AF23A1B48D63A8E092 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4AD9035B2DAC9EF92CCE0CB6 /* ConverApp.swift in Sources */,
+				D751F2991FAC4CF9E8597036 /* Engine.swift in Sources */,
+				95830C077541328980D30FF4 /* Theme.swift in Sources */,
+				7E01258305C2D3EADC628F5A /* Store.swift in Sources */,
+				DCAA81F2EB5D0D41BF6E8562 /* AudioStudio.swift in Sources */,
+				31B56398F2C1F10D8874DFFB /* PhotoStudio.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		7FCF9D0EFBC43FF43E6BA577 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = conver;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_ENTITLEMENTS = Conver.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Conver;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.conver.app;
+				PRODUCT_NAME = Conver;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9A9AF284EF55E9B60F533F54 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		B2CF7F972D1DBC1A633CE9F2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		C620E42DFDAA3359437DD19C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = conver;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_ENTITLEMENTS = Conver.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Conver;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.conver.app;
+				PRODUCT_NAME = Conver;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1C377C0592C559B92F8CA329 /* Build configuration list for PBXNativeTarget "Conver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C620E42DFDAA3359437DD19C /* Debug */,
+				7FCF9D0EFBC43FF43E6BA577 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2304916CBAF46E633AC86A9C /* Build configuration list for PBXProject "Conver" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2CF7F972D1DBC1A633CE9F2 /* Debug */,
+				9A9AF284EF55E9B60F533F54 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1781F676DEDF5767F3243DB0 /* Project object */;
+}

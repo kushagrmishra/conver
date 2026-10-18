@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conver Drop Wheel</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="stage" id="stage">
+    <!-- STATE 1: Clear Glass Radial Drop Wheel -->
+    <div class="wheel-view" id="wheelView">
+      <div class="radial-wheel" id="radialWheel">
+        <button class="wheel-wedge" data-wedge="quick" style="--i:0">
+          <span class="w-icon">⚡</span>
+          <span class="w-title">Quick Convert</span>
+          <span class="w-sub">Auto format</span>
+        </button>
+        <button class="wheel-wedge" data-wedge="compress" style="--i:1">
+          <span class="w-icon">🗜️</span>
+          <span class="w-title">Compress</span>
+          <span class="w-sub">Shrink size</span>
+        </button>
+        <button class="wheel-wedge" data-wedge="edit" style="--i:2">
+          <span class="w-icon">🪄</span>
+          <span class="w-title">Photo Edit</span>
+          <span class="w-sub">Rotate &amp; crop</span>
+        </button>
+        <button class="wheel-wedge" data-wedge="redact" style="--i:3">
+          <span class="w-icon">🕶️</span>
+          <span class="w-title">Redact</span>
+          <span class="w-sub">Blur / bleep</span>
+        </button>
+        <button class="wheel-wedge" data-wedge="exif" style="--i:4">
+          <span class="w-icon">🛡️</span>
+          <span class="w-title">Strip EXIF</span>
+          <span class="w-sub">Clean GPS</span>
+        </button>
+        <button class="wheel-wedge" data-wedge="pdf" style="--i:5">
+          <span class="w-icon">📄</span>
+          <span class="w-title">PDF Tools</span>
+          <span class="w-sub">Merge &amp; split</span>
+        </button>
+        <button class="wheel-wedge" data-wedge="audio" style="--i:6">
+          <span class="w-icon">🎵</span>
+          <span class="w-title">Audio Tools</span>
+          <span class="w-sub">Normalize</span>
+        </button>
+        <button class="wheel-wedge" data-wedge="qr" style="--i:7">
+          <span class="w-icon">📷</span>
+          <span class="w-title">Scan QR</span>
+          <span class="w-sub">Decode &amp; copy</span>
+        </button>
+
+        <!-- Center Hub (drag handle + drop/click target) -->
+        <div class="wheel-center" id="wheelCenter">
+          <span class="hub-icon" id="hubIcon">⊕</span>
+          <span class="hub-title" id="hubTitle">DROP FILES</span>
+          <span class="hub-sub" id="hubSub">Shift+Z · Drag to move</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATE 2: Morphed Clear Glass Action Menu Card -->
+    <div class="menu-card" id="menuCard" hidden>
+      <div class="menu-header" id="menuDragHandle">
+        <button class="icon-btn" id="backBtn" title="Back to Drop Wheel">← Wheel</button>
+        <div class="menu-title-wrap">
+          <span class="menu-title" id="menuTitle">Quick Convert</span>
+          <span class="menu-badge" id="menuBadge">Auto-Detected</span>
+        </div>
+        <button class="icon-btn" id="addFilesBtn" title="Add more files">＋ Files</button>
+      </div>
+
+      <!-- Selected Files Strip -->
+      <div class="file-strip" id="fileStrip"></div>
+
+      <!-- Dynamic Action Options Container -->
+      <div class="menu-body" id="menuBody"></div>
+
+      <!-- Output Folder & Status Footer -->
+      <div class="menu-footer">
+        <button class="pill-btn" id="outBtn" title="Choose output folder">📁 Same folder</button>
+        <span class="status-text" id="statusText">Ready</span>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="qrCanvas" hidden></canvas>
+  <div id="toast" class="toast"></div>
+  <script src="../node_modules/jsqr/dist/jsQR.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

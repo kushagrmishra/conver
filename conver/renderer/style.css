@@ -1,0 +1,403 @@
+:root {
+  --glass-bg: rgba(20, 24, 32, 0.38);
+  --glass-card-bg: rgba(18, 22, 30, 0.56);
+  --glass-border: rgba(255, 255, 255, 0.28);
+  --glass-highlight: rgba(255, 255, 255, 0.48);
+  --surface: rgba(255, 255, 255, 0.10);
+  --surface-hover: rgba(255, 255, 255, 0.22);
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.72);
+  --danger: #f87171;
+  --success: #34d399;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Ubuntu, Cantarell, sans-serif;
+  user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.stage {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+/* =========================================================
+   STATE 1: Clear Glass Radial Drop Wheel
+   ========================================================= */
+.wheel-view {
+  display: grid;
+  place-items: center;
+  animation: popIn 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+.radial-wheel {
+  position: relative;
+  width: 430px;
+  height: 430px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 25%,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(255, 255, 255, 0.08) 45%,
+    rgba(16, 20, 28, 0.42) 100%
+  );
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1.5px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.42),
+    inset 0 -10px 28px rgba(0, 0, 0, 0.28),
+    0 20px 48px rgba(0, 0, 0, 0.45);
+}
+
+.wheel-wedge {
+  --angle: calc(var(--i) * 45deg - 90deg);
+  --radius: 146px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
+  transform: rotate(var(--angle)) translate(var(--radius)) rotate(calc(-1 * var(--angle)));
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 6px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24), inset 0 1px 1px rgba(255, 255, 255, 0.28);
+  transition: all 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.wheel-wedge:hover,
+.wheel-wedge.over {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.78);
+  transform: rotate(var(--angle)) translate(var(--radius)) rotate(calc(-1 * var(--angle))) scale(1.13);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.42), 0 0 18px rgba(255, 255, 255, 0.24);
+}
+
+.w-icon {
+  font-size: 21px;
+  line-height: 1.1;
+}
+
+.w-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+}
+
+.w-sub {
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+.wheel-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 132px;
+  height: 132px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.22), rgba(15, 18, 26, 0.62));
+  border: 1.5px solid rgba(255, 255, 255, 0.36);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: grab;
+  text-align: center;
+  padding: 10px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  transition: all 0.18s ease;
+}
+
+.wheel-center:active {
+  cursor: grabbing;
+}
+
+.wheel-center.over {
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.28);
+  transform: translate(-50%, -50%) scale(1.07);
+}
+
+.hub-icon {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.hub-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.hub-sub {
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   STATE 2: Morphed Clear Glass Action Menu Card
+   ========================================================= */
+.menu-card {
+  width: 448px;
+  max-height: 500px;
+  border-radius: 34px;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(20, 25, 36, 0.68) 100%
+  );
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  border: 1.5px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.40),
+    0 22px 50px rgba(0, 0, 0, 0.50);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: morphIn 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+.menu-card[hidden] {
+  display: none !important;
+}
+
+.wheel-view[hidden] {
+  display: none !important;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.88); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes morphIn {
+  from { transform: scale(0.92); border-radius: 180px; opacity: 0.4; }
+  to { transform: scale(1); border-radius: 34px; opacity: 1; }
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: grab;
+}
+
+.menu-header:active {
+  cursor: grabbing;
+}
+
+.menu-title-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.menu-title {
+  font-size: 15px;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.menu-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.12);
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.icon-btn,
+.pill-btn {
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover,
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.file-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.file-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 310px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.option-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 16px;
+  padding: 12px 10px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.option-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.option-btn .o-title {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.option-btn .o-sub {
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+.menu-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.status-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.meta-box {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 10px;
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.meta-row.hot {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.canvas-wrap {
+  display: flex;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 14px;
+  overflow: auto;
+  max-height: 190px;
+  padding: 8px;
+}
+
+#rdCanvas {
+  max-width: 100%;
+  max-height: 170px;
+  cursor: crosshair;
+}
+
+.toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translate(-50%, 80px);
+  background: rgba(15, 18, 26, 0.92);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0;
+  transition: all 0.22s ease;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+}

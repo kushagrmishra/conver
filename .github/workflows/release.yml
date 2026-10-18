@@ -1,0 +1,70 @@
+name: Release Conver (macOS, Linux, Windows)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-native:
+    name: Build Native macOS (Conver.dmg)
+    runs-on: macos-15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build and Package Conver.dmg
+        run: |
+          chmod +x build.sh
+          ./build.sh mac
+
+      - name: Upload macOS Native DMG
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ConverMac/dist/Conver.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-cross-platform:
+    name: Build Windows & Linux Packages
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: dist:win
+            artifact: conver/dist/*.exe
+          - os: ubuntu-latest
+            target: dist:linux
+            artifact: |
+              conver/dist/*.AppImage
+              conver/dist/*.deb
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        working-directory: conver
+        run: npm ci || npm install
+
+      - name: Package Application
+        working-directory: conver
+        run: npm run ${{ matrix.target }}
+
+      - name: Upload Cross-Platform Binaries
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

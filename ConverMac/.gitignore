@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Swift & Xcode
+.build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+build/
+
+# Node & Electron
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+
+# Local env
+.env
+.env.local
