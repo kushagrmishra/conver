@@ -114,6 +114,33 @@ extension View {
     func glass(_ radius: CGFloat = 18) -> some View {
         modifier(FrostedGlass(radius: radius))
     }
+
+    @ViewBuilder
+    func clearGlassCircle() -> some View {
+        if #available(macOS 26.0, *) {
+            self.glassEffect(.clear, in: .circle)
+        } else {
+            self.background(Material.ultraThinMaterial, in: Circle())
+        }
+    }
+
+    @ViewBuilder
+    func clearGlassRect(radius: CGFloat) -> some View {
+        if #available(macOS 26.0, *) {
+            self.glassEffect(.clear, in: .rect(cornerRadius: radius, style: .continuous))
+        } else {
+            self.background(Material.ultraThinMaterial, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+        }
+    }
+
+    @ViewBuilder
+    func clearGlassCapsule() -> some View {
+        if #available(macOS 26.0, *) {
+            self.glassEffect(.clear, in: .capsule)
+        } else {
+            self.background(Material.ultraThinMaterial, in: Capsule())
+        }
+    }
 }
 
 // MARK: - Frosted Glass Buttons

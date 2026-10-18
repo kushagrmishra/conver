@@ -41,6 +41,7 @@ codesign --force --deep --options runtime --entitlements Conver.entitlements --s
 
 # --- DMG ---
 STAGE=dist/dmg; mkdir -p "$STAGE"; cp -R "$APP" "$STAGE/"; ln -s /Applications "$STAGE/Applications"
+echo "👉 Drag Conver into the Applications folder on the right to install." > "$STAGE/Drag Conver to Applications.txt"
 hdiutil create -volname "Conver" -srcfolder "$STAGE" -ov -format UDZO dist/Conver.dmg >/dev/null
 rm -rf "$STAGE" dist/assetcatalog_generated_info.plist
 echo "Built: $(pwd)/dist/Conver.dmg"

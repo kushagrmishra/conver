@@ -287,6 +287,62 @@ final class StatusBarDragView: NSView {
 
 // MARK: - AppDelegate: Menu Bar Icon, Shift+Z Hold-to-Open, Launch at Login & Clear Glass Wheel
 @MainActor
+enum AppRelocator {
+    @MainActor
+    static func checkAndPromptToMoveToApplications() {
+        let bundleURL = Bundle.main.bundleURL
+        let bundlePath = bundleURL.path
+
+        // Skip if already in /Applications or ~/Applications
+        if bundlePath.hasPrefix("/Applications/") || bundlePath.hasPrefix(NSHomeDirectory() + "/Applications/") {
+            return
+        }
+
+        // Skip in dev build directory
+        if bundlePath.contains("/.build/") || bundlePath.contains("/DerivedData/") {
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Move Conver to Applications folder?"
+        alert.informativeText = "Conver works best when installed in your Applications folder so it can run globally and respond to Shift + Z."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Move to Applications")
+        alert.addButton(withTitle: "Do Not Move")
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            let targetURL = URL(fileURLWithPath: "/Applications/Conver.app")
+            let fm = FileManager.default
+            do {
+                if fm.fileExists(atPath: targetURL.path) {
+                    try fm.removeItem(at: targetURL)
+                }
+                try fm.copyItem(at: bundleURL, to: targetURL)
+
+                let xattr = Process()
+                xattr.executableURL = URL(fileURLWithPath: "/usr/bin/xattr")
+                xattr.arguments = ["-cr", targetURL.path]
+                try? xattr.run()
+                xattr.waitUntilExit()
+
+                let config = NSWorkspace.OpenConfiguration()
+                config.activates = true
+                NSWorkspace.shared.openApplication(at: targetURL, configuration: config) { _, error in
+                    if error == nil {
+                        DispatchQueue.main.async {
+                            NSApp.terminate(nil)
+                        }
+                    }
+                }
+            } catch {
+                NSLog("Failed to move Conver to Applications: \(error)")
+            }
+        }
+    }
+}
+
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static weak var shared: AppDelegate?
 
@@ -307,6 +363,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Self.shared = self
+
+        // 0. Prompt to move to Applications if opened from DMG / Downloads
+        AppRelocator.checkAndPromptToMoveToApplications()
+
         let store = Store.shared
 
         // 1. Automatically enable Open at Login
@@ -728,6 +788,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    @MainActor
     private func closeIfClickedOutside(at mouse: NSPoint) {
         guard !Store.shared.isPickingFile else { return }
         // Never close while the user is holding Shift+Z or actively dragging a file into the wheel!
@@ -830,6 +891,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var isExternalDragSessionActive = false
     private var mouseDownStartedOutsideWheel = false
 
+    @MainActor
     private func pollShiftZAndMouseState() {
         let store = Store.shared
         let mouse = NSEvent.mouseLocation
@@ -983,7 +1045,7 @@ struct FloatingDropWheelRootView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 9)
                     .overlay(Capsule().strokeBorder(Color.white.opacity(0.50), lineWidth: 1))
-                    .glassEffect(.clear, in: .capsule)
+                    .clearGlassCapsule()
                     .shadow(color: .black.opacity(0.20), radius: 8, y: 3)
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
                 }
@@ -1417,7 +1479,7 @@ struct RadialDropWheel: View {
                 // Morphs from Circular Wheel into a Spacious Rounded-Rectangle Clear Glass Card
                 actionMenuCard(menu)
                     .frame(width: 396, height: 454)
-                    .glassEffect(.clear, in: .rect(cornerRadius: 34, style: .continuous))
+                    .clearGlassRect(radius: 34)
                     .transition(.scale(scale: 0.90).combined(with: .opacity))
             } else {
                 // Circular Clear Liquid Glass Radial Drop Wheel (WheelHitOverlay placed ABOVE glassEffect so drag & drop works natively!)
@@ -1459,7 +1521,7 @@ struct RadialDropWheel: View {
                             .allowsHitTesting(false)
                     }
                     .frame(width: wheelSize + 18, height: wheelSize + 18)
-                    .glassEffect(.clear, in: .circle)
+                    .clearGlassCircle()
                     .allowsHitTesting(false)
 
                     // Top-level Polar Hit-Testing, Drag-to-Move & File Drop Overlay (outside glassEffect)
