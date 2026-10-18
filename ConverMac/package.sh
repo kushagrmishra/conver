@@ -48,7 +48,8 @@ codesign --force --deep --options runtime --entitlements Conver.entitlements --s
 # --- Generate Retina DMG Background ---
 if [ -f "make_dmg_bg.js" ]; then
   echo "==> Generating Retina DMG background graphic..."
-  /opt/homebrew/bin/node make_dmg_bg.js || true
+  NODE_BIN=$(which node 2>/dev/null || ls /opt/homebrew/Cellar/node/*/bin/node 2>/dev/null | head -n 1 || echo "node")
+  "$NODE_BIN" make_dmg_bg.js || true
 fi
 
 # --- Create Styled DMG with Custom Finder Layout ---
@@ -85,26 +86,28 @@ fi
 
 # Configure Finder visual layout with AppleScript
 echo "==> Configuring Finder window layout & icon positions..."
-osascript <<EOF || true
+osascript <<EOF
 tell application "Finder"
+  activate
   tell disk "$DMG_VOL"
     open
+    delay 1
     set current view of container window to icon view
     set toolbar visible of container window to false
     set statusbar visible of container window to false
-    set the bounds of container window to {400, 150, 1060, 570}
+    set the bounds of container window to {300, 150, 960, 590}
     set theViewOptions to the icon view options of container window
     set arrangement of theViewOptions to not arranged
-    set icon size of theViewOptions to 120
+    set icon size of theViewOptions to 110
     if exists file ".background:bg.png" then
       set background picture of theViewOptions to file ".background:bg.png"
     end if
-    set position of item "Conver.app" of container window to {170, 240}
-    set position of item "Applications" of container window to {490, 240}
-    close
-    open
+    delay 1
+    set position of item "Conver.app" to {180, 230}
+    set position of item "Applications" to {480, 230}
     update without registering applications
     delay 1
+    close
   end tell
 end tell
 EOF

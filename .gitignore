@@ -23,3 +23,7 @@ dist/
 # Local env
 .env
 .env.local
+
+# Generated DMG assets
+*.dmg
+ConverMac/dmg_background.png

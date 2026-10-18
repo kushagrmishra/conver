@@ -356,7 +356,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeyRef: EventHotKeyRef?
     private var hotKeyEventHandler: EventHandlerRef?
 
-    private let panelSize = NSSize(width: 440, height: 520)
+    private let panelSize = NSSize(width: 560, height: 620)
     private let posXKey = "conver.wheel.originX"
     private let posYKey = "conver.wheel.originY"
     private let hasPosKey = "conver.wheel.hasCustomPos"
@@ -498,6 +498,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        // Wheel Size Submenu
+        let sizeMenu = NSMenu()
+        let sizes: [(String, Double)] = [
+            ("Compact (85%)", 0.85),
+            ("Standard (100%)", 1.0),
+            ("Large (115%)", 1.15),
+            ("Extra Large (130%)", 1.30)
+        ]
+        for (name, scale) in sizes {
+            let item = NSMenuItem(title: name, action: #selector(menuSetScale(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = scale
+            item.state = abs(store.wheelScale - scale) < 0.05 ? .on : .off
+            sizeMenu.addItem(item)
+        }
+        let sizeSubmenuItem = NSMenuItem(title: "Wheel Size", action: nil, keyEquivalent: "")
+        sizeSubmenuItem.submenu = sizeMenu
+        menu.addItem(sizeSubmenuItem)
+
+        menu.addItem(.separator())
+
         // Open at Login
         let loginItem = NSMenuItem(title: "Open at Login", action: #selector(menuToggleLogin), keyEquivalent: "")
         loginItem.target = self
@@ -529,6 +550,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuResetFolder() { Store.shared.outputDir = nil }
     @objc private func menuToggleLogin() {
         Store.shared.setLaunchAtLogin(!Store.shared.launchAtLogin)
+    }
+    @objc private func menuSetScale(_ sender: NSMenuItem) {
+        if let scale = sender.representedObject as? Double {
+            Store.shared.wheelScale = scale
+        }
     }
     @objc private func menuQuit() { NSApp.terminate(nil) }
 
@@ -1020,7 +1046,7 @@ struct FloatingDropWheelRootView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 10) {
-                RadialDropWheel(wheelSize: 380, onWindowMoved: onWindowMoved)
+                RadialDropWheel(wheelSize: 380 * CGFloat(store.wheelScale), onWindowMoved: onWindowMoved)
 
                 // Clear Glass Toast Pill when a conversion completes
                 if let toast = store.toast {
@@ -1053,6 +1079,7 @@ struct FloatingDropWheelRootView: View {
             .scaleEffect(store.wheelVisible ? 1.0 : 0.72)
             .opacity(store.wheelVisible ? 1.0 : 0.0)
             .animation(.spring(response: 0.24, dampingFraction: 0.78), value: store.wheelVisible)
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: store.wheelScale)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -1165,6 +1192,15 @@ final class WheelHitNSView: NSView {
         if !wasDragging {
             let pt = convert(event.locationInWindow, from: nil)
             onClickPoint?(pt)
+        }
+    }
+
+    override func magnify(with event: NSEvent) {
+        Task { @MainActor in
+            let current = Store.shared.wheelScale
+            let delta = Double(event.magnification)
+            let newScale = min(max(current + delta, 0.70), 1.45)
+            Store.shared.wheelScale = newScale
         }
     }
 

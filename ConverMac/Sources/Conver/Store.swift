@@ -91,6 +91,14 @@ struct WheelActionMenu: Identifiable {
     @Published var isPickingFile = false
     @Published var stagedURLs: [URL] = []
     @Published var hoveredWedgeWhileHolding: Int? = nil
+    @Published var wheelScale: Double = {
+        let saved = UserDefaults.standard.double(forKey: "conver.wheel.scale")
+        return saved >= 0.70 && saved <= 1.5 ? saved : 1.0
+    }() {
+        didSet {
+            UserDefaults.standard.set(wheelScale, forKey: "conver.wheel.scale")
+        }
+    }
 
     var onToggleWheel: ((Bool?) -> Void)?
     var onOpenStudio: ((Tab) -> Void)?
