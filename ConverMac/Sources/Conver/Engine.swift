@@ -390,6 +390,98 @@ enum Engine {
         }
     }
 
+    // MARK: Super-Resolution Upscaling (Lanczos + Edge & Luminance Reconstruction)
+    static func upscaleCGImage(_ cgSrc: CGImage, scale: Double? = nil, targetDimension: Int? = nil) throws -> CGImage {
+        let origW = Double(cgSrc.width)
+        let origH = Double(cgSrc.height)
+        guard origW > 0 && origH > 0 else {
+            throw KQError.msg("Invalid image dimensions")
+        }
+
+        let factor: Double
+        if let targetDimension, targetDimension > 0 {
+            let maxDim = max(origW, origH)
+            factor = max(1.0, Double(targetDimension) / maxDim)
+        } else {
+            factor = max(1.0, scale ?? 2.0)
+        }
+
+        let newW = min(16384.0, origW * factor)
+        let newH = min(16384.0, origH * factor)
+        let clampedFactor = newW / origW
+
+        let ciSrc = CIImage(cgImage: cgSrc)
+
+        // 1. Sinc-windowed Lanczos Scale Transform
+        guard let lanczos = CIFilter(name: "CILanczosScaleTransform") else {
+            throw KQError.msg("Lanczos filter unavailable")
+        }
+        lanczos.setValue(ciSrc, forKey: kCIInputImageKey)
+        lanczos.setValue(clampedFactor, forKey: kCIInputScaleKey)
+        lanczos.setValue(1.0, forKey: kCIInputAspectRatioKey)
+
+        guard var workingCI = lanczos.outputImage else {
+            throw KQError.msg("Scale transform failed")
+        }
+        workingCI = workingCI.cropped(to: CGRect(x: 0, y: 0, width: newW, height: newH))
+
+        // 2. Intelligent Luminance-Aware Edge Sharpening (avoids noise magnification)
+        if let sharpen = CIFilter(name: "CISharpenLuminance") {
+            sharpen.setValue(workingCI, forKey: kCIInputImageKey)
+            let sharpnessValue = clampedFactor >= 3.0 ? 0.65 : 0.45
+            sharpen.setValue(sharpnessValue, forKey: "inputSharpness")
+            if let shOut = sharpen.outputImage {
+                workingCI = shOut.cropped(to: CGRect(x: 0, y: 0, width: newW, height: newH))
+            }
+        }
+
+        // 3. High-Frequency Micro-Texture Unsharp Mask
+        if let unsharp = CIFilter(name: "CIUnsharpMask") {
+            unsharp.setValue(workingCI, forKey: kCIInputImageKey)
+            let radius = max(1.2, clampedFactor * 0.6)
+            unsharp.setValue(radius, forKey: kCIInputRadiusKey)
+            unsharp.setValue(0.38, forKey: kCIInputIntensityKey)
+            if let unOut = unsharp.outputImage {
+                workingCI = unOut.cropped(to: CGRect(x: 0, y: 0, width: newW, height: newH))
+            }
+        }
+
+        let colorSpace = cgSrc.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        guard let cgOut = ciContext.createCGImage(workingCI, from: workingCI.extent, format: .RGBA8, colorSpace: colorSpace) else {
+            throw KQError.msg("Failed to render upscaled image")
+        }
+        return cgOut
+    }
+
+    static func upscaleImage(
+        _ rawSrc: URL,
+        scale: Double? = nil,
+        targetDimension: Int? = nil,
+        dir: URL? = nil
+    ) throws -> URL {
+        let src = resolveFileURL(rawSrc)
+        let scoped = src.startAccessingSecurityScopedResource()
+        defer { if scoped { src.stopAccessingSecurityScopedResource() } }
+
+        let cgSrc = try loadCGImage(src)
+        let cgOut = try upscaleCGImage(cgSrc, scale: scale, targetDimension: targetDimension)
+
+        let suffixTag: String
+        if let targetDimension, targetDimension > 0 {
+            suffixTag = targetDimension >= 7000 ? "-8K" : (targetDimension >= 3500 ? "-4K" : "-\(targetDimension)px")
+        } else {
+            let s = scale ?? 2.0
+            suffixTag = s == 2.0 ? "-2x" : (s == 4.0 ? "-4x" : "-\(Int(s))x")
+        }
+
+        let ext = src.pathExtension.lowercased()
+        let outExt = ["jpg", "jpeg"].contains(ext) ? "jpg" : "png"
+        let outType: UTType = outExt == "jpg" ? .jpeg : .png
+        let out = outURL(src, ext: outExt, suffix: suffixTag, dir: dir)
+        try writeImage(cgOut, to: out, type: outType, quality: 0.95)
+        return out
+    }
+
     static func compressImage(_ src: URL, dir: URL?) throws -> URL {
         let isHeic = src.pathExtension.lowercased() == "heic"
         let img = try loadCGImage(src, maxPixel: 2560)

@@ -1364,9 +1364,9 @@ struct RadialDropWheel: View {
             },
             WedgeSpec(
                 id: 1,
-                label: "Compress",
-                subtitle: "Shrink & resize",
-                icon: "arrow.down.right.and.arrow.up.left.circle.fill",
+                label: "Upscale & Resize",
+                subtitle: "Super-res & shrink",
+                icon: "arrow.up.left.and.arrow.down.right.circle.fill",
                 types: [.item]
             ) { urls in
                 presentCompressMenu(for: urls)
@@ -2021,6 +2021,29 @@ struct RadialDropWheel: View {
             }
 
         case .image, .other:
+            // 1. AI Super-Resolution Upscaling Options
+            options.append(WheelMenuOption(
+                title: "AI Super-Resolution 2× (200%)",
+                subtitle: "Double dimensions with crisp edge reconstruction",
+                icon: "sparkles"
+            ) {
+                runBatchUpscale(urls, scale: 2.0)
+            })
+            options.append(WheelMenuOption(
+                title: "AI Super-Resolution 4× (400%)",
+                subtitle: "Quadruple dimensions into crisp Ultra HD",
+                icon: "wand.and.stars"
+            ) {
+                runBatchUpscale(urls, scale: 4.0)
+            })
+            options.append(WheelMenuOption(
+                title: "Upscale to 4K Ultra HD (3840 px)",
+                subtitle: "Boost image long edge to 4K resolution",
+                icon: "tv.fill"
+            ) {
+                runBatchUpscale(urls, targetDimension: 3840)
+            })
+
             let imageTargets: [(Target, String, String)] = [
                 (.png, "PNG (.png)", "Lossless image with transparency"),
                 (.jpeg, "JPEG (.jpg)", "Compact universal photo"),
@@ -2125,7 +2148,7 @@ struct RadialDropWheel: View {
         )
     }
 
-    // 1. Compress & Resize Menu (auto-detects Document / Image / Video / PDF / Audio)
+    // 1. Upscale & Resize Menu (auto-detects Document / Image / Video / PDF / Audio)
     private func presentCompressMenu(for rawURLs: [URL]) {
         let urls = rawURLs.map { Engine.resolveFileURL($0) }
         let info = describeFiles(urls)
@@ -2141,11 +2164,36 @@ struct RadialDropWheel: View {
             })
 
         case .image, .other:
+            options.append(WheelMenuOption(
+                title: "Super-Resolution 2× (200%)",
+                subtitle: "Double dimensions with Lanczos edge enhancement",
+                icon: "arrow.up.left.and.arrow.down.right"
+            ) {
+                runBatchUpscale(urls, scale: 2.0)
+            })
+            options.append(WheelMenuOption(
+                title: "Super-Resolution 4× (400%)",
+                subtitle: "Quadruple dimensions with crisp micro-contrast",
+                icon: "sparkles"
+            ) {
+                runBatchUpscale(urls, scale: 4.0)
+            })
+            options.append(WheelMenuOption(
+                title: "Upscale to 4K Ultra HD (3840 px)",
+                subtitle: "Boost long edge to 4K with super-res",
+                icon: "tv.fill"
+            ) {
+                runBatchUpscale(urls, targetDimension: 3840)
+            })
+            options.append(WheelMenuOption(
+                title: "Upscale to 8K Master (7680 px)",
+                subtitle: "Massive print & archival super-resolution",
+                icon: "crown.fill"
+            ) {
+                runBatchUpscale(urls, targetDimension: 7680)
+            })
             options.append(WheelMenuOption(title: "Smart Compress (60% Quality)", subtitle: "Shrink file size while keeping detail", icon: "arrow.down.right.and.arrow.up.left") {
                 runTask { try Engine.compressImage(urls[0], dir: store.outputDir) }
-            })
-            options.append(WheelMenuOption(title: "Resize to 4K (3840 px)", subtitle: "Ultra HD maximum dimension", icon: "aspectratio.fill") {
-                runBatchConvert(urls, to: .jpeg, quality: 0.85, maxPixel: 3840)
             })
             options.append(WheelMenuOption(title: "Resize to 1080p (1920 px)", subtitle: "Full HD web & sharing size", icon: "photo.tv") {
                 runBatchConvert(urls, to: .jpeg, quality: 0.82, maxPixel: 1920)
@@ -2183,7 +2231,7 @@ struct RadialDropWheel: View {
         }
 
         store.activeMenu = WheelActionMenu(
-            wedgeTitle: "Compress & Resize",
+            wedgeTitle: "Upscale & Resize",
             detectedBadge: info.badge,
             detectedIcon: info.icon,
             options: options
@@ -2197,6 +2245,12 @@ struct RadialDropWheel: View {
         let info = describeFiles(urls)
 
         let options: [WheelMenuOption] = [
+            WheelMenuOption(title: "AI Super-Resolution 2× Upscale", subtitle: "Double dimensions with zero blur", icon: "sparkles") {
+                runBatchUpscale([first], scale: 2.0)
+            },
+            WheelMenuOption(title: "AI Super-Resolution 4× Upscale", subtitle: "Quadruple into crisp Ultra HD", icon: "wand.and.stars") {
+                runBatchUpscale([first], scale: 4.0)
+            },
             WheelMenuOption(title: "Adjust Exposure & Color…", subtitle: "Open studio sliders & presets", icon: "slider.horizontal.3") {
                 store.handoff(url: first, tab: .photo, photoMode: .adjust, audioMode: nil)
             },
@@ -2588,6 +2642,35 @@ struct RadialDropWheel: View {
     }
 
     // MARK: - Execution Helpers
+    private func runBatchUpscale(_ urls: [URL], scale: Double? = nil, targetDimension: Int? = nil) {
+        let targetDir = store.outputDir
+        store.wheelBusy = true
+        Task {
+            var lastOut: URL?
+            var count = 0
+            for u in urls {
+                do {
+                    let out = try await Task.detached(priority: .userInitiated) {
+                        try Engine.upscaleImage(u, scale: scale, targetDimension: targetDimension, dir: targetDir)
+                    }.value
+                    store.addRecent(out)
+                    lastOut = out
+                    count += 1
+                } catch {
+                    store.say("Upscale Error: \(error.localizedDescription)")
+                }
+            }
+            store.wheelBusy = false
+            if let lastOut {
+                store.copyToClipboard(lastOut, announce: false)
+                let tag = targetDimension != nil ? (targetDimension! >= 7000 ? "8K" : "4K") : "\(Int(scale ?? 2.0))×"
+                store.say("Upscaled \(count) image\(count == 1 ? "" : "s") → \(tag) Super-Res!")
+            }
+            try? await Task.sleep(for: .seconds(0.9))
+            store.onCheckAutoClose?()
+        }
+    }
+
     private func runBatchConvert(_ urls: [URL], to target: Target, quality: Double = 0.90, maxPixel: Int = 0) {
         store.wheelBusy = true
         Task {

@@ -148,6 +148,16 @@ func fitRect(_ size: CGSize, in box: CGSize, margin: CGFloat = 0) -> CGRect {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.writeObjects([NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))])
     }
+
+    func upscale(scale: Double? = nil, targetDimension: Int? = nil, dir: URL?) throws -> URL {
+        guard let url else { throw KQError.msg("No photo") }
+        let cg = try renderFinal()
+        let cgUp = try Engine.upscaleCGImage(cg, scale: scale, targetDimension: targetDimension)
+        let tag = targetDimension != nil ? (targetDimension! >= 7000 ? "-8K" : "-4K") : "-\(Int(scale ?? 2.0))x"
+        let out = Engine.outURL(url, ext: "png", suffix: tag, dir: dir)
+        try Engine.writeImage(cgUp, to: out, type: .png, quality: 0.95)
+        return out
+    }
 }
 
 // MARK: - Composition (preview == export)
@@ -228,9 +238,18 @@ struct PhotoStudioView: View {
                         do { try m.copyToClipboard(); store.say("Copied to clipboard") } catch { store.say(error.localizedDescription) }
                     }.buttonStyle(.soft)
                     Menu {
-                        Button("Export PNG") { export(png: true) }
-                        Button("Export JPEG") { export(png: false) }
-                    } label: { Label("Export", systemImage: "square.and.arrow.up") }
+                        Section("AI Super-Resolution") {
+                            Button("AI Upscale 2× (200%)") { runUpscale(scale: 2.0) }
+                            Button("AI Upscale 4× (400%)") { runUpscale(scale: 4.0) }
+                            Button("Upscale to 4K Ultra HD") { runUpscale(dim: 3840) }
+                            Button("Upscale to 8K Master") { runUpscale(dim: 7680) }
+                        }
+                        Divider()
+                        Section("Standard Export") {
+                            Button("Export PNG") { export(png: true) }
+                            Button("Export JPEG") { export(png: false) }
+                        }
+                    } label: { Label("Export & Upscale", systemImage: "sparkles") }
                         .menuStyle(.button).buttonStyle(.glow).fixedSize()
                 }
             }
@@ -260,6 +279,15 @@ struct PhotoStudioView: View {
 
     func export(png: Bool) {
         do { store.done(try m.export(png: png, dir: store.outputDir)) } catch { store.say(error.localizedDescription) }
+    }
+
+    func runUpscale(scale: Double? = nil, dim: Int? = nil) {
+        do {
+            let out = try m.upscale(scale: scale, targetDimension: dim, dir: store.outputDir)
+            store.done(out)
+        } catch {
+            store.say("Upscale Error: \(error.localizedDescription)")
+        }
     }
 }
 
