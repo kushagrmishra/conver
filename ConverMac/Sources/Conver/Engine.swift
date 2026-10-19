@@ -12,12 +12,19 @@ enum KQError: LocalizedError {
     var errorDescription: String? { if case .msg(let m) = self { return m }; return nil }
 }
 
-enum Kind { case image, audio, video }
+enum Kind { case image, audio, video, document }
 
 enum FileKind {
-    case image, audio, video, pdf, other
+    case image, audio, video, pdf, document, other
     static func of(_ u: URL) -> FileKind {
-        guard let t = UTType(filenameExtension: u.pathExtension.lowercased()) else { return .other }
+        let ext = u.pathExtension.lowercased()
+        let docExts: Set<String> = [
+            "docx", "doc", "rtf", "rtfd", "txt", "html", "htm", "odt",
+            "pages", "markdown", "md", "webarchive", "log"
+        ]
+        if docExts.contains(ext) { return .document }
+
+        guard let t = UTType(filenameExtension: ext) else { return .other }
         if t.conforms(to: .image) { return .image }
         if t.conforms(to: .pdf) { return .pdf }
         if t.conforms(to: .audio) { return .audio }
@@ -27,13 +34,14 @@ enum FileKind {
 }
 
 enum Target: String, CaseIterable, Identifiable {
-    case jpeg, png, heic, tiff, bmp, gif, m4a, wav, flac, aiff, mp4, mov
+    case jpeg, png, heic, tiff, bmp, gif, m4a, wav, flac, aiff, mp4, mov, pdf
     var id: String { rawValue }
     var label: String {
         switch self {
         case .jpeg: "JPEG"; case .png: "PNG"; case .heic: "HEIC"; case .tiff: "TIFF"; case .bmp: "BMP"; case .gif: "GIF"
         case .m4a: "M4A (AAC)"; case .wav: "WAV"; case .flac: "FLAC"; case .aiff: "AIFF"
         case .mp4: "MP4 (H.264)"; case .mov: "MOV"
+        case .pdf: "PDF"
         }
     }
     var shortLabel: String { self == .jpeg ? "JPG" : rawValue.uppercased() }
@@ -42,12 +50,14 @@ enum Target: String, CaseIterable, Identifiable {
         case .jpeg, .png, .heic, .tiff, .bmp, .gif: .image
         case .m4a, .wav, .flac, .aiff: .audio
         case .mp4, .mov: .video
+        case .pdf: .document
         }
     }
     var ext: String { self == .jpeg ? "jpg" : rawValue }
     var utType: UTType? {
         switch self {
         case .jpeg: .jpeg; case .png: .png; case .heic: .heic; case .tiff: .tiff; case .bmp: .bmp; case .gif: .gif
+        case .pdf: .pdf
         default: nil
         }
     }
@@ -276,7 +286,32 @@ enum Engine {
 
         // Smart cross-media compatibility so dropping any file onto Quick Convert works seamlessly
         switch srcKind {
+        case .document:
+            if t == .pdf {
+                return try await MainActor.run {
+                    try convertDocumentToPDF(src, dir: dir)
+                }
+            } else if t.kind == .image {
+                let tempPDF = try await MainActor.run {
+                    try convertDocumentToPDF(src, dir: nil)
+                }
+                defer { try? FileManager.default.removeItem(at: tempPDF) }
+                let img = try loadCGImage(tempPDF, maxPixel: maxPixel)
+                let out = outURL(src, ext: t.ext, dir: dir)
+                try writeImage(img, to: out, type: t.utType!, quality: quality)
+                return out
+            } else {
+                return try await MainActor.run {
+                    try convertDocumentToPDF(src, dir: dir)
+                }
+            }
         case .image, .pdf:
+            if t == .pdf {
+                if srcKind == .image {
+                    return try imagesToPDF([src], dir: dir)
+                }
+                return src
+            }
             if t.kind != .image {
                 t = (src.pathExtension.lowercased() == "jpg" || src.pathExtension.lowercased() == "jpeg") ? .png : .jpeg
             }
@@ -295,6 +330,10 @@ enum Engine {
         }
 
         switch t.kind {
+        case .document:
+            return try await MainActor.run {
+                try convertDocumentToPDF(src, dir: dir)
+            }
         case .image:
             let img = try loadCGImage(src, maxPixel: maxPixel)
             let out = outURL(src, ext: t.ext, dir: dir)
@@ -378,6 +417,105 @@ enum Engine {
         doc.write(to: out); return out
     }
 
+    // MARK: Document to PDF (DOCX, DOC, RTF, RTFD, TXT, HTML, ODT, PAGES, MD)
+    @MainActor
+    static func convertDocumentToPDF(_ rawSrc: URL, dir: URL?) throws -> URL {
+        let src = resolveFileURL(rawSrc)
+        let scoped = src.startAccessingSecurityScopedResource()
+        defer { if scoped { src.stopAccessingSecurityScopedResource() } }
+
+        let out = outURL(src, ext: "pdf", dir: dir)
+        let ext = src.pathExtension.lowercased()
+
+        var attrString: NSAttributedString?
+        var docAttributes: NSDictionary?
+
+        // 1. Specific format hint
+        let specificOptions: [NSAttributedString.DocumentReadingOptionKey: Any]
+        switch ext {
+        case "docx":
+            specificOptions = [.documentType: NSAttributedString.DocumentType.officeOpenXML]
+        case "doc":
+            specificOptions = [.documentType: NSAttributedString.DocumentType.docFormat]
+        case "rtf", "rtfd":
+            specificOptions = [.documentType: NSAttributedString.DocumentType.rtf]
+        case "html", "htm":
+            specificOptions = [.documentType: NSAttributedString.DocumentType.html]
+        default:
+            specificOptions = [:]
+        }
+
+        if !specificOptions.isEmpty {
+            attrString = try? NSAttributedString(url: src, options: specificOptions, documentAttributes: &docAttributes)
+        }
+
+        // 2. Auto-detecting options
+        if attrString == nil {
+            attrString = try? NSAttributedString(url: src, options: [:], documentAttributes: &docAttributes)
+        }
+
+        // 3. Fallback via /usr/bin/textutil to HTML if direct loading failed
+        if attrString == nil && FileManager.default.fileExists(atPath: "/usr/bin/textutil") {
+            let tmpHTML = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".html")
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: "/usr/bin/textutil")
+            proc.arguments = ["-convert", "html", src.path, "-output", tmpHTML.path]
+            try? proc.run()
+            proc.waitUntilExit()
+
+            if FileManager.default.fileExists(atPath: tmpHTML.path) {
+                defer { try? FileManager.default.removeItem(at: tmpHTML) }
+                attrString = try? NSAttributedString(
+                    url: tmpHTML,
+                    options: [.documentType: NSAttributedString.DocumentType.html],
+                    documentAttributes: &docAttributes
+                )
+            }
+        }
+
+        // 4. Plain text fallback
+        if attrString == nil {
+            if let plain = try? String(contentsOf: src, encoding: .utf8) {
+                attrString = NSAttributedString(string: plain)
+            }
+        }
+
+        guard let str = attrString, str.length > 0 else {
+            throw KQError.msg("Could not open or parse document \(src.lastPathComponent)")
+        }
+
+        // Multi-page paginated print rendering
+        let printInfo = NSPrintInfo()
+        printInfo.paperSize = NSSize(width: 595.28, height: 841.89) // Standard A4 (210 x 297 mm)
+        printInfo.topMargin = 40
+        printInfo.bottomMargin = 40
+        printInfo.leftMargin = 40
+        printInfo.rightMargin = 40
+        printInfo.isHorizontallyCentered = false
+        printInfo.isVerticallyCentered = false
+        printInfo.jobDisposition = .save
+        printInfo.dictionary().setObject(out, forKey: NSPrintInfo.AttributeKey.jobSavingURL as NSCopying)
+
+        let textStorage = NSTextStorage(attributedString: str)
+        let layoutManager = NSLayoutManager()
+        textStorage.addLayoutManager(layoutManager)
+        let contentWidth = printInfo.paperSize.width - printInfo.leftMargin - printInfo.rightMargin
+        let textContainer = NSTextContainer(containerSize: NSSize(width: contentWidth, height: CGFloat.greatestFiniteMagnitude))
+        textContainer.widthTracksTextView = true
+        layoutManager.addTextContainer(textContainer)
+
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: contentWidth, height: 100), textContainer: textContainer)
+        let op = NSPrintOperation(view: textView, printInfo: printInfo)
+        op.showsPrintPanel = false
+        op.showsProgressPanel = false
+
+        guard op.run() && FileManager.default.fileExists(atPath: out.path) else {
+            throw KQError.msg("Failed to write PDF for \(src.lastPathComponent)")
+        }
+
+        return out
+    }
+
     // MARK: Metadata
     static func readMetadata(_ rawURL: URL) -> [(String, String)] {
         let url = resolveFileURL(rawURL)
@@ -434,10 +572,24 @@ enum Engine {
 
     static func extractText(from url: URL) throws -> String {
         let resolved = resolveFileURL(url)
-        if resolved.pathExtension.lowercased() == "pdf", let doc = PDFDocument(url: resolved) {
+        let ext = resolved.pathExtension.lowercased()
+        if ext == "pdf", let doc = PDFDocument(url: resolved) {
             let pdfText = (0..<doc.pageCount).compactMap { doc.page(at: $0)?.string }.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
             if !pdfText.isEmpty {
                 return pdfText
+            }
+        }
+        if FileKind.of(resolved) == .document {
+            if let attr = try? NSAttributedString(url: resolved, options: [:], documentAttributes: nil),
+               !attr.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return attr.string.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if let docxAttr = try? NSAttributedString(url: resolved, options: [.documentType: NSAttributedString.DocumentType.officeOpenXML], documentAttributes: nil),
+               !docxAttr.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return docxAttr.string.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if let str = try? String(contentsOf: resolved, encoding: .utf8), !str.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return str.trimmingCharacters(in: .whitespacesAndNewlines)
             }
         }
         let cg = try loadCGImage(resolved)

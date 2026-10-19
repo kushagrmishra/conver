@@ -243,6 +243,22 @@ struct WheelActionMenu: Identifiable {
             audio.load(first)
             tab = .audio
             onOpenStudio?(.audio)
+        case .document:
+            Task { @MainActor in
+                do {
+                    var convertedPDFs: [URL] = []
+                    for u in urls {
+                        let pdf = try Engine.convertDocumentToPDF(u, dir: outputDir)
+                        convertedPDFs.append(pdf)
+                        done(pdf)
+                    }
+                    if !convertedPDFs.isEmpty {
+                        pdf.load(convertedPDFs)
+                    }
+                } catch {
+                    say("Document Error: \(error.localizedDescription)")
+                }
+            }
         case .pdf:
             if urls.count >= 2, let merged = try? Engine.mergePDFs(urls, dir: outputDir) {
                 done(merged)

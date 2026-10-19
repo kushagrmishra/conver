@@ -1403,7 +1403,7 @@ struct RadialDropWheel: View {
                 label: "PDF Tools",
                 subtitle: "Merge, split, PNG",
                 icon: "doc.on.doc.fill",
-                types: [.pdf, .image]
+                types: [.pdf, .image, .item]
             ) { urls in
                 presentPDFMenu(for: urls)
             },
@@ -1421,7 +1421,7 @@ struct RadialDropWheel: View {
                 label: "Extract Text",
                 subtitle: "OCR & QR Scanner",
                 icon: "text.viewfinder",
-                types: [.image, .pdf]
+                types: [.image, .pdf, .item]
             ) { urls in
                 presentTextAndQRMenu(for: urls)
             }
@@ -1960,12 +1960,14 @@ struct RadialDropWheel: View {
             return (.video, "\(ext.isEmpty ? "Video" : ext) Video · \(countStr) (\(size))", "film.fill")
         case .pdf:
             return (.pdf, "PDF Document · \(countStr) (\(size))", "doc.richtext.fill")
+        case .document:
+            return (.document, "\(ext.isEmpty ? "Document" : ext) Document · \(countStr) (\(size))", "doc.text.fill")
         case .other:
             return (.other, "\(ext) File · \(countStr) (\(size))", "doc.fill")
         }
     }
 
-    // 0. Quick Convert Menu (auto-detects Image / Audio / Video / PDF and lists valid targets)
+    // 0. Quick Convert Menu (auto-detects Document / Image / Audio / Video / PDF and lists valid targets)
     private func presentQuickConvertMenu(for rawURLs: [URL]) {
         let urls = rawURLs.map { Engine.resolveFileURL($0) }
         let info = describeFiles(urls)
@@ -1973,6 +1975,51 @@ struct RadialDropWheel: View {
         var options: [WheelMenuOption] = []
 
         switch info.kind {
+        case .document:
+            options.append(WheelMenuOption(
+                title: "Convert to PDF (.pdf)",
+                subtitle: urls.count > 1 ? "Convert \(urls.count) documents to PDF" : "Paginated formatted PDF document",
+                icon: "doc.richtext.fill"
+            ) {
+                runBatchConvert(urls, to: .pdf)
+            })
+            options.append(WheelMenuOption(
+                title: "Convert Page 1 → PNG (.png)",
+                subtitle: "Render first page as high-res PNG image",
+                icon: "photo.badge.arrow.down"
+            ) {
+                runBatchConvert(urls, to: .png)
+            })
+            options.append(WheelMenuOption(
+                title: "Convert Page 1 → JPEG (.jpg)",
+                subtitle: "Render first page as JPEG photo",
+                icon: "photo.fill"
+            ) {
+                runBatchConvert(urls, to: .jpeg)
+            })
+            options.append(WheelMenuOption(
+                title: "Extract Text to Clipboard",
+                subtitle: "Extract document body text and copy to clipboard",
+                icon: "text.viewfinder"
+            ) {
+                runOCR(urls)
+            })
+            if urls.count >= 2 {
+                options.append(WheelMenuOption(
+                    title: "Convert & Merge \(urls.count) Documents into 1 PDF",
+                    subtitle: "Render each document and combine pages in order",
+                    icon: "square.stack.3d.up.fill"
+                ) {
+                    runTask {
+                        var pdfs: [URL] = []
+                        for u in urls {
+                            pdfs.append(try Engine.convertDocumentToPDF(u, dir: store.outputDir))
+                        }
+                        return try Engine.mergePDFs(pdfs, dir: store.outputDir)
+                    }
+                })
+            }
+
         case .image, .other:
             let imageTargets: [(Target, String, String)] = [
                 (.png, "PNG (.png)", "Lossless image with transparency"),
@@ -2078,13 +2125,21 @@ struct RadialDropWheel: View {
         )
     }
 
-    // 1. Compress & Resize Menu (auto-detects Image / Video / PDF / Audio)
+    // 1. Compress & Resize Menu (auto-detects Document / Image / Video / PDF / Audio)
     private func presentCompressMenu(for rawURLs: [URL]) {
         let urls = rawURLs.map { Engine.resolveFileURL($0) }
         let info = describeFiles(urls)
         var options: [WheelMenuOption] = []
 
         switch info.kind {
+        case .document:
+            options.append(WheelMenuOption(title: "Convert Document to PDF (.pdf)", subtitle: "Generate formatted compact PDF", icon: "doc.richtext.fill") {
+                runBatchConvert(urls, to: .pdf)
+            })
+            options.append(WheelMenuOption(title: "Extract Text to Clipboard", subtitle: "Extract all text without formatting", icon: "text.viewfinder") {
+                runOCR(urls)
+            })
+
         case .image, .other:
             options.append(WheelMenuOption(title: "Smart Compress (60% Quality)", subtitle: "Shrink file size while keeping detail", icon: "arrow.down.right.and.arrow.up.left") {
                 runTask { try Engine.compressImage(urls[0], dir: store.outputDir) }
@@ -2229,9 +2284,41 @@ struct RadialDropWheel: View {
     private func presentPDFMenu(for rawURLs: [URL]) {
         let urls = rawURLs.map { Engine.resolveFileURL($0) }
         let pdfs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
+        let docs = urls.filter { FileKind.of($0) == .document }
         let images = urls.filter { FileKind.of($0) == .image }
         let info = describeFiles(urls)
         var options: [WheelMenuOption] = []
+
+        if !docs.isEmpty {
+            options.append(WheelMenuOption(
+                title: docs.count == 1 ? "Convert Document to PDF (.pdf)" : "Convert \(docs.count) Documents to PDF",
+                subtitle: "Formatted paginated PDF output",
+                icon: "doc.richtext.fill"
+            ) {
+                runBatchConvert(docs, to: .pdf)
+            })
+            if docs.count >= 2 || (!docs.isEmpty && !pdfs.isEmpty) {
+                options.append(WheelMenuOption(
+                    title: "Convert & Merge All into 1 PDF",
+                    subtitle: "Render documents & combine with PDFs in order",
+                    icon: "square.stack.3d.up.fill"
+                ) {
+                    runTask {
+                        var allPDFs: [URL] = []
+                        for u in urls {
+                            if u.pathExtension.lowercased() == "pdf" {
+                                allPDFs.append(u)
+                            } else if FileKind.of(u) == .document {
+                                allPDFs.append(try Engine.convertDocumentToPDF(u, dir: store.outputDir))
+                            } else if FileKind.of(u) == .image {
+                                allPDFs.append(try Engine.imagesToPDF([u], dir: store.outputDir))
+                            }
+                        }
+                        return try Engine.mergePDFs(allPDFs, dir: store.outputDir)
+                    }
+                })
+            }
+        }
 
         if pdfs.count >= 2 {
             options.append(WheelMenuOption(title: "Merge \(pdfs.count) PDFs into One", subtitle: "Combine documents into a single PDF", icon: "square.stack.3d.up.fill") {
