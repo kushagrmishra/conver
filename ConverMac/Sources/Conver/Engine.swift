@@ -34,7 +34,7 @@ enum FileKind {
 }
 
 enum Target: String, CaseIterable, Identifiable {
-    case jpeg, png, heic, tiff, bmp, gif, m4a, wav, flac, aiff, mp4, mov, pdf
+    case jpeg, png, heic, tiff, bmp, gif, m4a, wav, flac, aiff, mp4, mov, pdf, docx, rtf, txt, html
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -42,6 +42,10 @@ enum Target: String, CaseIterable, Identifiable {
         case .m4a: "M4A (AAC)"; case .wav: "WAV"; case .flac: "FLAC"; case .aiff: "AIFF"
         case .mp4: "MP4 (H.264)"; case .mov: "MOV"
         case .pdf: "PDF"
+        case .docx: "Word (.docx)"
+        case .rtf: "Rich Text (.rtf)"
+        case .txt: "Plain Text (.txt)"
+        case .html: "HTML (.html)"
         }
     }
     var shortLabel: String { self == .jpeg ? "JPG" : rawValue.uppercased() }
@@ -50,7 +54,7 @@ enum Target: String, CaseIterable, Identifiable {
         case .jpeg, .png, .heic, .tiff, .bmp, .gif: .image
         case .m4a, .wav, .flac, .aiff: .audio
         case .mp4, .mov: .video
-        case .pdf: .document
+        case .pdf, .docx, .rtf, .txt, .html: .document
         }
     }
     var ext: String { self == .jpeg ? "jpg" : rawValue }
@@ -58,6 +62,10 @@ enum Target: String, CaseIterable, Identifiable {
         switch self {
         case .jpeg: .jpeg; case .png: .png; case .heic: .heic; case .tiff: .tiff; case .bmp: .bmp; case .gif: .gif
         case .pdf: .pdf
+        case .docx: UTType(filenameExtension: "docx")
+        case .rtf: .rtf
+        case .txt: .plainText
+        case .html: .html
         default: nil
         }
     }
@@ -286,31 +294,34 @@ enum Engine {
 
         // Smart cross-media compatibility so dropping any file onto Quick Convert works seamlessly
         switch srcKind {
-        case .document:
-            if t == .pdf {
+        case .document, .pdf:
+            if t.kind == .document {
+                let target = t
                 return try await MainActor.run {
-                    try convertDocumentToPDF(src, dir: dir)
+                    if target == .pdf {
+                        return try convertDocumentToPDF(src, dir: dir)
+                    } else {
+                        return try convertDocument(src, to: target, dir: dir)
+                    }
                 }
             } else if t.kind == .image {
-                let tempPDF = try await MainActor.run {
-                    try convertDocumentToPDF(src, dir: nil)
+                let tempPDF: URL
+                if srcKind == .pdf {
+                    tempPDF = src
+                } else {
+                    tempPDF = try await MainActor.run {
+                        try convertDocumentToPDF(src, dir: nil)
+                    }
                 }
-                defer { try? FileManager.default.removeItem(at: tempPDF) }
+                defer { if tempPDF != src { try? FileManager.default.removeItem(at: tempPDF) } }
                 let img = try loadCGImage(tempPDF, maxPixel: maxPixel)
                 let out = outURL(src, ext: t.ext, dir: dir)
                 try writeImage(img, to: out, type: t.utType!, quality: quality)
                 return out
-            } else {
-                return try await MainActor.run {
-                    try convertDocumentToPDF(src, dir: dir)
-                }
             }
-        case .image, .pdf:
+        case .image:
             if t == .pdf {
-                if srcKind == .image {
-                    return try imagesToPDF([src], dir: dir)
-                }
-                return src
+                return try imagesToPDF([src], dir: dir)
             }
             if t.kind != .image {
                 t = (src.pathExtension.lowercased() == "jpg" || src.pathExtension.lowercased() == "jpeg") ? .png : .jpeg
@@ -331,8 +342,13 @@ enum Engine {
 
         switch t.kind {
         case .document:
+            let target = t
             return try await MainActor.run {
-                try convertDocumentToPDF(src, dir: dir)
+                if target == .pdf {
+                    return try convertDocumentToPDF(src, dir: dir)
+                } else {
+                    return try convertDocument(src, to: target, dir: dir)
+                }
             }
         case .image:
             let img = try loadCGImage(src, maxPixel: maxPixel)
@@ -509,20 +525,42 @@ enum Engine {
         doc.write(to: out); return out
     }
 
-    // MARK: Document to PDF (DOCX, DOC, RTF, RTFD, TXT, HTML, ODT, PAGES, MD)
+    // MARK: Document Inter-Conversion (PDF <-> Word DOCX <-> RTF <-> HTML <-> TXT)
     @MainActor
-    static func convertDocumentToPDF(_ rawSrc: URL, dir: URL?) throws -> URL {
+    static func loadDocumentAttributedString(_ rawSrc: URL) throws -> NSAttributedString {
         let src = resolveFileURL(rawSrc)
         let scoped = src.startAccessingSecurityScopedResource()
         defer { if scoped { src.stopAccessingSecurityScopedResource() } }
 
-        let out = outURL(src, ext: "pdf", dir: dir)
         let ext = src.pathExtension.lowercased()
 
-        var attrString: NSAttributedString?
-        var docAttributes: NSDictionary?
+        // 1. If it is a PDF document: extract formatted attributed strings per page
+        if ext == "pdf", let doc = PDFDocument(url: src) {
+            let fullAttr = NSMutableAttributedString()
+            for i in 0..<doc.pageCount {
+                if let p = doc.page(at: i), let attr = p.attributedString, attr.length > 0 {
+                    fullAttr.append(attr)
+                    if i < doc.pageCount - 1 {
+                        fullAttr.append(NSAttributedString(string: "\n\n"))
+                    }
+                }
+            }
+            if fullAttr.length > 0 {
+                return fullAttr
+            }
 
-        // 1. Specific format hint
+            // Fallback for scanned PDF without text layer: extract via text layer or Apple Vision OCR
+            let text = try extractText(from: src)
+            if !text.isEmpty {
+                return NSAttributedString(string: text, attributes: [
+                    .font: NSFont.systemFont(ofSize: 12),
+                    .foregroundColor: NSColor.textColor
+                ])
+            }
+        }
+
+        // 2. Format-specific reading options
+        var docAttributes: NSDictionary?
         let specificOptions: [NSAttributedString.DocumentReadingOptionKey: Any]
         switch ext {
         case "docx":
@@ -537,17 +575,20 @@ enum Engine {
             specificOptions = [:]
         }
 
-        if !specificOptions.isEmpty {
-            attrString = try? NSAttributedString(url: src, options: specificOptions, documentAttributes: &docAttributes)
+        if !specificOptions.isEmpty,
+           let attr = try? NSAttributedString(url: src, options: specificOptions, documentAttributes: &docAttributes),
+           attr.length > 0 {
+            return attr
         }
 
-        // 2. Auto-detecting options
-        if attrString == nil {
-            attrString = try? NSAttributedString(url: src, options: [:], documentAttributes: &docAttributes)
+        // 3. Auto-detecting options
+        if let attr = try? NSAttributedString(url: src, options: [:], documentAttributes: &docAttributes),
+           attr.length > 0 {
+            return attr
         }
 
-        // 3. Fallback via /usr/bin/textutil to HTML if direct loading failed
-        if attrString == nil && FileManager.default.fileExists(atPath: "/usr/bin/textutil") {
+        // 4. Fallback via /usr/bin/textutil
+        if FileManager.default.fileExists(atPath: "/usr/bin/textutil") {
             let tmpHTML = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".html")
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: "/usr/bin/textutil")
@@ -557,24 +598,75 @@ enum Engine {
 
             if FileManager.default.fileExists(atPath: tmpHTML.path) {
                 defer { try? FileManager.default.removeItem(at: tmpHTML) }
-                attrString = try? NSAttributedString(
+                if let attr = try? NSAttributedString(
                     url: tmpHTML,
                     options: [.documentType: NSAttributedString.DocumentType.html],
                     documentAttributes: &docAttributes
-                )
+                ), attr.length > 0 {
+                    return attr
+                }
             }
         }
 
-        // 4. Plain text fallback
-        if attrString == nil {
-            if let plain = try? String(contentsOf: src, encoding: .utf8) {
-                attrString = NSAttributedString(string: plain)
-            }
+        // 5. Plain text fallback
+        if let plain = try? String(contentsOf: src, encoding: .utf8), !plain.isEmpty {
+            return NSAttributedString(string: plain)
         }
 
-        guard let str = attrString, str.length > 0 else {
-            throw KQError.msg("Could not open or parse document \(src.lastPathComponent)")
+        throw KQError.msg("Could not open or parse document \(src.lastPathComponent)")
+    }
+
+    @MainActor
+    static func convertDocument(_ rawSrc: URL, to target: Target, dir: URL? = nil) throws -> URL {
+        let src = resolveFileURL(rawSrc)
+        if target == .pdf {
+            return try convertDocumentToPDF(src, dir: dir)
         }
+
+        let attr = try loadDocumentAttributedString(src)
+        let out = outURL(src, ext: target.ext, dir: dir)
+        let fullRange = NSRange(location: 0, length: attr.length)
+
+        switch target {
+        case .docx:
+            let data = try attr.data(
+                from: fullRange,
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.officeOpenXML]
+            )
+            try data.write(to: out)
+        case .rtf:
+            let data = try attr.data(
+                from: fullRange,
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]
+            )
+            try data.write(to: out)
+        case .html:
+            let data = try attr.data(
+                from: fullRange,
+                documentAttributes: [.documentType: NSAttributedString.DocumentType.html]
+            )
+            try data.write(to: out)
+        case .txt:
+            try attr.string.write(to: out, atomically: true, encoding: .utf8)
+        default:
+            throw KQError.msg("Unsupported document target format: \(target.rawValue)")
+        }
+
+        return out
+    }
+
+    @MainActor
+    static func convertDocumentToPDF(_ rawSrc: URL, dir: URL?) throws -> URL {
+        let src = resolveFileURL(rawSrc)
+        if src.pathExtension.lowercased() == "pdf" {
+            return src
+        }
+
+        let scoped = src.startAccessingSecurityScopedResource()
+        defer { if scoped { src.stopAccessingSecurityScopedResource() } }
+
+        let out = outURL(src, ext: "pdf", dir: dir)
+        let str = try loadDocumentAttributedString(src)
 
         // Multi-page paginated print rendering
         let printInfo = NSPrintInfo()

@@ -1400,9 +1400,9 @@ struct RadialDropWheel: View {
             },
             WedgeSpec(
                 id: 5,
-                label: "PDF Tools",
-                subtitle: "Merge, split, PNG",
-                icon: "doc.on.doc.fill",
+                label: "PDF & Docs",
+                subtitle: "Word, PDF, RTF & split",
+                icon: "doc.richtext.fill",
                 types: [.pdf, .image, .item]
             ) { urls in
                 presentPDFMenu(for: urls)
@@ -1976,13 +1976,51 @@ struct RadialDropWheel: View {
 
         switch info.kind {
         case .document:
-            options.append(WheelMenuOption(
-                title: "Convert to PDF (.pdf)",
-                subtitle: urls.count > 1 ? "Convert \(urls.count) documents to PDF" : "Paginated formatted PDF document",
-                icon: "doc.richtext.fill"
-            ) {
-                runBatchConvert(urls, to: .pdf)
-            })
+            if srcExt != "pdf" {
+                options.append(WheelMenuOption(
+                    title: "Convert to PDF (.pdf)",
+                    subtitle: urls.count > 1 ? "Convert \(urls.count) documents to PDF" : "Paginated vector PDF document",
+                    icon: "doc.richtext.fill"
+                ) {
+                    runBatchConvert(urls, to: .pdf)
+                })
+            }
+            if srcExt != "docx" {
+                options.append(WheelMenuOption(
+                    title: "Convert to Word Document (.docx)",
+                    subtitle: urls.count > 1 ? "Convert \(urls.count) files to editable Word format" : "Editable Microsoft Word document",
+                    icon: "doc.text.fill"
+                ) {
+                    runBatchConvert(urls, to: .docx)
+                })
+            }
+            if srcExt != "rtf" {
+                options.append(WheelMenuOption(
+                    title: "Convert to Rich Text (.rtf)",
+                    subtitle: "Universal styled rich text document",
+                    icon: "doc.richtext"
+                ) {
+                    runBatchConvert(urls, to: .rtf)
+                })
+            }
+            if srcExt != "html" && srcExt != "htm" {
+                options.append(WheelMenuOption(
+                    title: "Convert to HTML (.html)",
+                    subtitle: "Web document with responsive layout",
+                    icon: "safari.fill"
+                ) {
+                    runBatchConvert(urls, to: .html)
+                })
+            }
+            if srcExt != "txt" {
+                options.append(WheelMenuOption(
+                    title: "Convert to Plain Text (.txt)",
+                    subtitle: "Clean unformatted text document",
+                    icon: "doc.plaintext"
+                ) {
+                    runBatchConvert(urls, to: .txt)
+                })
+            }
             options.append(WheelMenuOption(
                 title: "Convert Page 1 → PNG (.png)",
                 subtitle: "Render first page as high-res PNG image",
@@ -2114,6 +2152,34 @@ struct RadialDropWheel: View {
             })
 
         case .pdf:
+            options.append(WheelMenuOption(
+                title: "Convert to Word Document (.docx)",
+                subtitle: urls.count > 1 ? "Convert \(urls.count) PDFs to editable Word format" : "Editable Microsoft Word document (.docx)",
+                icon: "doc.text.fill"
+            ) {
+                runBatchConvert(urls, to: .docx)
+            })
+            options.append(WheelMenuOption(
+                title: "Convert to Rich Text (.rtf)",
+                subtitle: "Universal styled rich text document (.rtf)",
+                icon: "doc.richtext"
+            ) {
+                runBatchConvert(urls, to: .rtf)
+            })
+            options.append(WheelMenuOption(
+                title: "Convert to HTML (.html)",
+                subtitle: "Web document with responsive layout (.html)",
+                icon: "safari.fill"
+            ) {
+                runBatchConvert(urls, to: .html)
+            })
+            options.append(WheelMenuOption(
+                title: "Convert to Plain Text (.txt)",
+                subtitle: "Clean unformatted text document (.txt)",
+                icon: "doc.plaintext"
+            ) {
+                runBatchConvert(urls, to: .txt)
+            })
             options.append(WheelMenuOption(title: "Export All Pages → PNG", subtitle: "High-res PNG image per page", icon: "photo.on.rectangle.angled") {
                 runTask {
                     let imgs = try Engine.exportPNGs(urls[0], dir: store.outputDir)
@@ -2334,7 +2400,7 @@ struct RadialDropWheel: View {
         )
     }
 
-    // 5. PDF Tools Menu
+    // 5. PDF & Docs Menu
     private func presentPDFMenu(for rawURLs: [URL]) {
         let urls = rawURLs.map { Engine.resolveFileURL($0) }
         let pdfs = urls.filter { $0.pathExtension.lowercased() == "pdf" }
@@ -2343,14 +2409,65 @@ struct RadialDropWheel: View {
         let info = describeFiles(urls)
         var options: [WheelMenuOption] = []
 
+        if !pdfs.isEmpty {
+            options.append(WheelMenuOption(
+                title: pdfs.count == 1 ? "Convert PDF → Word (.docx)" : "Convert \(pdfs.count) PDFs → Word (.docx)",
+                subtitle: "Editable Microsoft Word document",
+                icon: "doc.text.fill"
+            ) {
+                runBatchConvert(pdfs, to: .docx)
+            })
+            options.append(WheelMenuOption(
+                title: pdfs.count == 1 ? "Convert PDF → Rich Text (.rtf)" : "Convert \(pdfs.count) PDFs → Rich Text",
+                subtitle: "Universal styled rich text format",
+                icon: "doc.richtext"
+            ) {
+                runBatchConvert(pdfs, to: .rtf)
+            })
+            options.append(WheelMenuOption(
+                title: pdfs.count == 1 ? "Convert PDF → HTML (.html)" : "Convert \(pdfs.count) PDFs → HTML",
+                subtitle: "Web document with responsive layout",
+                icon: "safari.fill"
+            ) {
+                runBatchConvert(pdfs, to: .html)
+            })
+            options.append(WheelMenuOption(
+                title: pdfs.count == 1 ? "Convert PDF → Plain Text (.txt)" : "Convert \(pdfs.count) PDFs → Plain Text",
+                subtitle: "Clean unformatted body text",
+                icon: "doc.plaintext"
+            ) {
+                runBatchConvert(pdfs, to: .txt)
+            })
+        }
+
         if !docs.isEmpty {
             options.append(WheelMenuOption(
-                title: docs.count == 1 ? "Convert Document to PDF (.pdf)" : "Convert \(docs.count) Documents to PDF",
-                subtitle: "Formatted paginated PDF output",
+                title: docs.count == 1 ? "Convert Document → PDF (.pdf)" : "Convert \(docs.count) Documents to PDF",
+                subtitle: "Formatted paginated vector PDF",
                 icon: "doc.richtext.fill"
             ) {
                 runBatchConvert(docs, to: .pdf)
             })
+            let nonDocx = docs.filter { $0.pathExtension.lowercased() != "docx" }
+            if !nonDocx.isEmpty {
+                options.append(WheelMenuOption(
+                    title: nonDocx.count == 1 ? "Convert Document → Word (.docx)" : "Convert \(nonDocx.count) Documents → Word (.docx)",
+                    subtitle: "Editable Microsoft Word document",
+                    icon: "doc.text.fill"
+                ) {
+                    runBatchConvert(nonDocx, to: .docx)
+                })
+            }
+            let nonRtf = docs.filter { $0.pathExtension.lowercased() != "rtf" }
+            if !nonRtf.isEmpty {
+                options.append(WheelMenuOption(
+                    title: nonRtf.count == 1 ? "Convert Document → Rich Text (.rtf)" : "Convert \(nonRtf.count) Documents → Rich Text",
+                    subtitle: "Universal styled rich text format",
+                    icon: "doc.richtext"
+                ) {
+                    runBatchConvert(nonRtf, to: .rtf)
+                })
+            }
             if docs.count >= 2 || (!docs.isEmpty && !pdfs.isEmpty) {
                 options.append(WheelMenuOption(
                     title: "Convert & Merge All into 1 PDF",
@@ -2403,7 +2520,7 @@ struct RadialDropWheel: View {
         }
 
         store.activeMenu = WheelActionMenu(
-            wedgeTitle: "PDF Tools",
+            wedgeTitle: "PDF & Docs",
             detectedBadge: info.badge,
             detectedIcon: info.icon,
             options: options
